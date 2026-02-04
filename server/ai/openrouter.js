@@ -3,13 +3,6 @@ const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch
 
 module.exports = {
   generateQuestion: async (level, knownWords = []) => {
-    const apiKey = config.ai.openRouterKey || process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-      const err = new Error('OPENROUTER_KEY_MISSING');
-      err.code = 'OPENROUTER_KEY_MISSING';
-      throw err;
-    }
-
     const model = process.env.OPENROUTER_MODEL || 'google/gemini-pro';
     
     // HARD CAP for stability (prevent 402 errors)
@@ -32,16 +25,13 @@ module.exports = {
     const promptChars = payload.messages.map(m => m.content).join('\n').length;
     console.log(`[OpenRouter] REQUEST: model=${payload.model}, max_tokens=${payload.max_tokens}, prompt_chars=${promptChars}`);
 
-    try {
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://clawdbot.local', 
-                'X-Title': 'Clawdbot Dev'
-            },
-            body: JSON.stringify(payload)
+    // Check key AFTER logging (for verification purposes)
+    const apiKey = (config.ai && config.ai.openRouterKey) || process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      const err = new Error('OPENROUTER_KEY_MISSING');
+      err.code = 'OPENROUTER_KEY_MISSING';
+      throw err;
+    }
 
     try {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -52,17 +42,7 @@ module.exports = {
                 'HTTP-Referer': 'https://clawdbot.local', 
                 'X-Title': 'Clawdbot Dev'
             },
-            body: JSON.stringify({
-                model: model,
-                max_tokens: MAX_TOKENS, // Explicit Cap
-                messages: [{
-                    role: 'system',
-                    content: 'You are an English teacher. Generate a multiple-choice question for English learning. Return ONLY valid JSON in the format: { "id": "uuid", "question": "text", "options": ["A","B","C","D"], "answer": "A", "explanation": "text" }.'
-                }, {
-                    role: 'user',
-                    content: `Generate a level ${level} question.`
-                }]
-            })
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
