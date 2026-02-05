@@ -57,6 +57,22 @@ function init() {
             type TEXT DEFAULT 'parent',
             PRIMARY KEY (parent_id, student_id)
         )`);
+
+        // v0.3.0: Classes
+        db.run(`CREATE TABLE IF NOT EXISTS classes (
+            id TEXT PRIMARY KEY,
+            teacher_id TEXT,
+            name TEXT,
+            created_at INTEGER
+        )`);
+
+        // v0.3.0: Class Members
+        db.run(`CREATE TABLE IF NOT EXISTS class_members (
+            class_id TEXT,
+            student_id TEXT,
+            joined_at INTEGER,
+            PRIMARY KEY (class_id, student_id)
+        )`);
         
         console.log('Stats DB Initialized at', dbPath);
     });

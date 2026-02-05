@@ -1,6 +1,6 @@
 {
   "name": "aixuexi2026-server",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "iPad AI Learning Server",
   "main": "src/index.js",
   "scripts": {

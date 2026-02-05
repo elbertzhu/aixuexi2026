@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authService = require('../auth/service');
 const storage = require('../stats/storage');
+const srs = require('../srs/service');
 const { authenticate, requireRole } = require('../auth/middleware');
 
 router.use(authenticate);
@@ -10,12 +11,11 @@ router.use(authenticate);
 router.get('/dashboard/summary', requireRole('parent'), async (req, res) => {
     try {
         const students = await authService.getStudentsForParent(req.user.id);
-        const srsService = require('../srs/service');
         const report = [];
 
         for (const student of students) {
             const profile = await storage.getProfile(student.id);
-            const pending = await srsService.getPendingItems(student.id, 100);
+            const pending = await srs.getPendingItems(student.id, 100);
             
             report.push({
                 student: { id: student.id, name: student.name },
