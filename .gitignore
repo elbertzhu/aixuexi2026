@@ -1,0 +1,39 @@
+# Node
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env / Secrets
+.env
+**/.env
+
+# Data / Runtime
+data/
+**/data/
+*.db
+
+# Release artifacts
+release/*.zip
+release/**/*.zip
+
+# macOS
+.DS_Store
+
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+.env
+**/.env
+
+data/
+**/data/
+*.db
+release/*.zip
+release/**/*.zip
+
+.DS_Store
