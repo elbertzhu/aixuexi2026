@@ -37,3 +37,6 @@ release/*.zip
 release/**/*.zip
 
 .DS_Store
+
+# Release artifacts
+release/
