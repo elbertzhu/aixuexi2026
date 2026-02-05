@@ -1,18 +1,18 @@
 # Release Notes
 
-## v0.3.0 (2026-02-05)
-**Teacher Dashboard & RBAC**
+## v0.3.1 (2026-02-05) - Teacher Dashboard UI
+**Frontend Only Release**
 
-### New Features
-*   **Teacher Role**: Added `teacher` role to `users` table.
-*   **Class Management**: backend support for `classes` and `class_members`.
-*   **Dashboard API**:
-    *   `GET /api/teacher/dashboard/summary`: Aggregated view of classes.
-    *   `GET /api/teacher/dashboard/student/:id`: Individual student stats.
-*   **RBAC**: Enforced role checks (`requireRole('teacher')`).
+### Features
+*   **Teacher Dashboard**:
+    *   Added `TeacherDashboardView` with class summary list.
+    *   Added student list per class with activity/accuracy snapshots.
+*   **Student Drill-down**:
+    *   Added `TeacherStudentDetailView` for individual metrics.
+*   **RBAC UI**:
+    *   Implemented Identity Switcher (Teacher/Student/Parent) for dev testing.
+    *   Added specific 403 Forbidden error card.
 
-### Database Changes
-*   New tables: `classes`, `class_members`.
-
-### Fixes
-*   Fixed OpenRouter 402 error with token caps.
+### Tech
+*   **SwiftUI**: Use of `NavigationView`, `List`, `LazyVGrid`, `async/await`.
+*   **Architecture**: MVVM pattern (`TeacherDashboardViewModel`, `APIService`).
