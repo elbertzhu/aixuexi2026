@@ -1,42 +1,36 @@
 # AIXUEXI 2026 - AI 英语学习系统
 
-## 项目状态
-- **阶段**：B 回合交付中 (0.1.0 MVP)
-- **最后更新**：2026-02-03
+## Project Status
+**Current Version**: v0.3.0
+**Phase**: Teacher Dashboard & RBAC
 
-## 技术栈
-- **客户端**：Swift + SwiftUI (iPadOS)
-- **服务端**：Node.js + Express
-- **AI**：MiniMax / Gemini 3 (Mock)
+## Documentation
+*   [Release Notes (v0.3.0)](docs/RELEASE_NOTES.md)
+*   [Installation Guide](docs/INSTALL.md)
+*   [Deployment Checklist](docs/DEPLOY_CHECKLIST.md)
+*   [Rollback Guide](docs/ROLLBACK.md)
+*   [Decision Log](DECISION_LOG.md)
 
-## 快速开始
+## Quick Start
 
-### 1. 服务端 (Backend)
+### 1. Server (Backend)
 ```bash
 cd server
 npm install
 npm start
 ```
-- 运行在 `http://localhost:3000`
-- 健康检查：`curl http://localhost:3000/health`
+Checks: `curl http://localhost:3000/health`
 
-### 2. 客户端 (Client)
-打开 `client/ios/aixuexi2026.xcodeproj`。
-- 选择 iPad Pro (或其他 iPad 模拟器)。
-- 按 `Cmd + R` 运行。
+### 2. Client
+Open `client/ios/aixuexi2026.xcodeproj` in Xcode.
 
-### 3. 测试流程
-1. 点击 "开始水平测试"。
-2. 依次回答 5 道选择题。
-3. 查看测试结果与 AI 分析。
+## Architecture
+*   **Server**: Node.js, Express, SQLite3
+*   **AI**: OpenRouter (Minimax/Gemini), Internal Mock
 
-## 目录结构
-- `server/`: Node.js API 与数据逻辑。
-- `client/ios/`: SwiftUI 前端代码。
-- `docs/`: 项目文档 (宪章、数据模型、决策记录)。
-
-## 核心功能
-- [x] 水平测试启动与流程控制。
-- [x] 题目展示与答案校验。
-- [x] 结果统计与展示。
-- [ ] AI 出题引擎接入 (待 Key)。
+## Features
+*   **Assessment**: Adaptive placement tests.
+*   **SRS**: Spaced Repetition System.
+*   **Dashboards**:
+    *   Parent: Child progress monitoring.
+    *   Teacher (v0.3.0): Class & Student analytics.
