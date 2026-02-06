@@ -8,10 +8,10 @@ struct TeacherDashboardView: View {
         NavigationView {
             VStack(spacing: 0) {
                 // Identity Switcher (Dev Tool)
-                Picker("Identity", selection: $api.currentUserId) {
-                    Text("Teacher").tag("teacher_v3_test")
-                    Text("Student").tag("student_v3_1")
-                    Text("Parent").tag("parent_v3_test")
+                Picker("身份", selection: $api.currentUserId) {
+                    Text("教师").tag("teacher_v3_test")
+                    Text("学生").tag("student_v3_1")
+                    Text("家长").tag("parent_v3_test")
                 }
                 .pickerStyle(SegmentedPickerStyle())
                 .padding()
@@ -21,16 +21,44 @@ struct TeacherDashboardView: View {
                 
                 Group {
                     if vm.isLoading {
-                        // Skeleton / Loading Experience
                         LoadingSkeletonView()
                     } else if vm.isForbidden {
                         ForbiddenView()
                     } else if let err = vm.error {
                         ErrorView(message: err, retryAction: { vm.load() })
+                    } else if vm.filteredClasses.isEmpty {
+                        // Empty State
+                        VStack(spacing: 24) {
+                            Image(systemName: "rectangle.stack.badge.plus")
+                                .font(.system(size: 60))
+                                .foregroundColor(.secondary)
+                            
+                            VStack(spacing: 8) {
+                                Text("暂无班级")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                
+                                Text("创建一个新班级来管理学生")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            
+                            Button {
+                                vm.showCreateSheet = true
+                            } label: {
+                                Label("创建班级", systemImage: "plus.circle.fill")
+                                    .font(.headline)
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 12)
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
-                        // Dashboard Content
                         VStack(spacing: 0) {
-                            // Controls: Search + Sort + Filter
+                            // Controls
                             DashboardControls(vm: vm)
                                 .padding(.horizontal)
                                 .padding(.bottom, 8)
@@ -49,7 +77,7 @@ struct TeacherDashboardView: View {
                                         .buttonStyle(BorderlessButtonStyle())
                                     }) {
                                         if cls.students.isEmpty {
-                                            Text("No matching students")
+                                            Text("暂无学生")
                                                 .foregroundColor(.secondary)
                                                 .italic()
                                         } else {
@@ -58,7 +86,6 @@ struct TeacherDashboardView: View {
                                                     NavigationLink(destination: TeacherStudentDetailView(studentId: student.id)) {
                                                         StudentRow(student: student)
                                                     }
-                                                    // v0.4.1: Kick Button
                                                     Button {
                                                         vm.studentToKick = student
                                                         vm.showKickAlert = true
@@ -78,7 +105,7 @@ struct TeacherDashboardView: View {
                     }
                 }
             }
-            .navigationTitle("Teacher Dashboard")
+            .navigationTitle("教师仪表盘")
             .onAppear { vm.load() }
             .sheet(isPresented: $vm.showCreateSheet) {
                 CreateClassSheet(api: api, onCreate: {
@@ -93,15 +120,15 @@ struct TeacherDashboardView: View {
                     })
                 }
             }
-            .alert("Kick Student?", isPresented: $vm.showKickAlert) {
-                Button("Cancel", role: .cancel) {}
-                Button("Kick", role: .destructive) {
+            .alert("移除学生？", isPresented: $vm.showKickAlert) {
+                Button("取消", role: .cancel) {}
+                Button("移除", role: .destructive) {
                     if let student = vm.studentToKick, let classId = vm.selectedClassId {
                         vm.kick(studentId: student.id, from: classId)
                     }
                 }
             } message: {
-                Text("Are you sure you want to remove \(vm.studentToKick?.id ?? "this student")?")
+                Text("确定要移除 \(vm.studentToKick?.id ?? "该学生") 吗？")
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
@@ -119,16 +146,15 @@ struct DashboardControls: View {
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.gray)
-                TextField("Search Student ID", text: $vm.searchText)
+                TextField("搜索学生 ID", text: $vm.searchText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
             }
             
             // Filters Row
             HStack {
-                // Class Picker
                 if !vm.availableClasses.isEmpty {
-                    Picker("Class", selection: $vm.selectedClassId) {
-                        Text("All Classes").tag(String?.none)
+                    Picker("班级", selection: $vm.selectedClassId) {
+                        Text("全部班级").tag(String?.none)
                         ForEach(vm.availableClasses) { cls in
                             Text(cls.className).tag(String?.some(cls.id))
                         }
@@ -136,15 +162,14 @@ struct DashboardControls: View {
                     .pickerStyle(MenuPickerStyle())
                     .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
-                    Text("No Classes")
+                    Text("暂无班级")
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 
                 Spacer()
                 
-                // Sort Picker
-                Picker("Sort", selection: $vm.sortOption) {
+                Picker("排序", selection: $vm.sortOption) {
                     ForEach(StudentSortOption.allCases) { opt in
                         Text(opt.rawValue).tag(opt)
                     }
@@ -152,7 +177,6 @@ struct DashboardControls: View {
                 .pickerStyle(SegmentedPickerStyle())
                 .frame(maxWidth: 200)
                 
-                // v0.4.1: Create Class Button
                 Button {
                     vm.showCreateSheet = true
                 } label: {
@@ -172,13 +196,12 @@ struct StudentRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(student.id)
                     .font(.headline)
-                Text("Active: \(formatDate(student.last_active))")
+                Text("活跃：\(formatDate(student.last_active))")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
             Spacer()
             
-            // Core Metrics
             HStack(spacing: 12) {
                 // Accuracy Badge
                 HStack(spacing: 2) {
@@ -189,7 +212,7 @@ struct StudentRow: View {
                 }
                 .foregroundColor(colorForAccuracy(student.accuracy))
                 
-                // SRS Badge (Only if non-zero)
+                // SRS Badge
                 if student.srs_pending > 0 {
                     HStack(spacing: 2) {
                         Image(systemName: "clock.arrow.circlepath")
@@ -215,8 +238,7 @@ struct StudentRow: View {
     }
     
     func formatDate(_ ts: Double?) -> String {
-        guard let ts = ts else { return "Never" }
-        // Simple relative time or short date
+        guard let ts = ts else { return "从未" }
         let date = Date(timeIntervalSince1970: ts / 1000)
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
@@ -228,17 +250,17 @@ struct LoadingSkeletonView: View {
     var body: some View {
         List {
             ForEach(0..<3) { section in
-                Section(header: Text("Class Loading...").redacted(reason: .placeholder)) {
+                Section(header: Text("加载中...").redacted(reason: .placeholder)) {
                     ForEach(0..<3) { row in
                         HStack {
                             VStack(alignment: .leading) {
-                                Text("Student Name Placeholder")
+                                Text("学生占位符")
                                     .font(.headline)
-                                Text("Last Active: Yesterday")
+                                Text("活跃：昨天")
                                     .font(.caption)
                             }
                             Spacer()
-                            Text("85% Acc")
+                            Text("85% 正确率")
                         }
                         .redacted(reason: .placeholder)
                         .padding(.vertical, 4)
@@ -255,10 +277,10 @@ struct ForbiddenView: View {
             Image(systemName: "hand.raised.fill")
                 .font(.system(size: 60))
                 .foregroundColor(.red)
-            Text("403 Forbidden")
+            Text("403 无权限")
                 .font(.title)
                 .bold()
-            Text("You do not have permission to access the Teacher Dashboard.")
+            Text("您无权访问教师仪表盘")
                 .multilineTextAlignment(.center)
                 .foregroundColor(.secondary)
         }
@@ -277,14 +299,14 @@ struct ErrorView: View {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 50))
                 .foregroundColor(.orange)
-            Text("Error")
+            Text("出错了")
                 .font(.headline)
-            Text(message)
+            Text(unifiedErrorMessage(message))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
             
             Button(action: retryAction) {
-                Text("Retry")
+                Text("重试")
                     .fontWeight(.bold)
                     .padding()
                     .frame(width: 120)
@@ -294,5 +316,15 @@ struct ErrorView: View {
             }
         }
         .padding()
+    }
+    
+    private func unifiedErrorMessage(_ msg: String) -> String {
+        if msg.contains("403") || msg.contains("forbidden") {
+            return "无权限"
+        }
+        if msg.contains("network") || msg.contains("Network") {
+            return "网络异常，请重试"
+        }
+        return msg
     }
 }

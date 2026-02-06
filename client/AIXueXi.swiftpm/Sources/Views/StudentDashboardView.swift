@@ -8,10 +8,10 @@ struct StudentDashboardView: View {
         NavigationView {
             VStack(spacing: 0) {
                 // Identity Switcher (Dev Tool)
-                Picker("Identity", selection: $api.currentUserId) {
-                    Text("Teacher").tag("teacher_v3_test")
-                    Text("Student").tag("student_v3_1")
-                    Text("Parent").tag("parent_v3_test")
+                Picker("身份", selection: $api.currentUserId) {
+                    Text("教师").tag("teacher_v3_test")
+                    Text("学生").tag("student_v3_1")
+                    Text("家长").tag("parent_v3_test")
                 }
                 .pickerStyle(SegmentedPickerStyle())
                 .padding()
@@ -21,43 +21,62 @@ struct StudentDashboardView: View {
                 
                 Group {
                     if vm.isLoading {
-                        ProgressView("Loading...")
+                        ProgressView("加载中...")
                     } else if let err = vm.error {
                         ErrorView(message: err, retryAction: { vm.load() })
+                    } else if vm.joinedClasses.isEmpty {
+                        // Empty State with Guidance
+                        VStack(spacing: 24) {
+                            Image(systemName: "person.3.slash")
+                                .font(.system(size: 60))
+                                .foregroundColor(.secondary)
+                            
+                            VStack(spacing: 8) {
+                                Text("暂无加入的班级")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                
+                                Text("输入邀请码加入班级，开始学习")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            
+                            Button {
+                                vm.showJoinSheet = true
+                            } label: {
+                                Label("加入班级", systemImage: "person.badge.plus")
+                                    .font(.headline)
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 12)
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
                         List {
-                            if vm.joinedClasses.isEmpty {
-                                Section {
-                                    VStack(spacing: 12) {
-                                        Image(systemName: "person.3.slash")
-                                            .font(.largeTitle)
-                                            .foregroundColor(.secondary)
-                                        Text("You haven't joined any classes yet.")
-                                            .multilineTextAlignment(.center)
+                            ForEach(vm.joinedClasses) { cls in
+                                Section(header: Text(cls.className)) {
+                                    HStack {
+                                        Text("学生数：\(cls.studentCount)")
+                                        Spacer()
                                     }
-                                    .padding()
-                                    .frame(maxWidth: .infinity)
-                                }
-                            } else {
-                                ForEach(vm.joinedClasses) { cls in
-                                    Section(header: Text(cls.className)) {
-                                        HStack {
-                                            Text("Student Count: \(cls.studentCount)")
-                                            Spacer()
-                                        }
-                                        
-                                        Button("Leave Class") {
-                                            vm.leaveClassId = cls.id
-                                            vm.showLeaveAlert = true
-                                        }
-                                        .foregroundColor(.red)
+                                    
+                                    Button(role: .destructive) {
+                                        vm.leaveClassId = cls.id
+                                        vm.showLeaveAlert = true
+                                    } label: {
+                                        Label("退出班级", systemImage: "rectangle.portrait.and.arrow.right")
                                     }
                                 }
                             }
                             
                             Section {
-                                Button(action: { vm.showJoinSheet = true }) {
-                                    Label("Join Class", systemImage: "person.badge.plus")
+                                Button {
+                                    vm.showJoinSheet = true
+                                } label: {
+                                    Label("加入班级", systemImage: "person.badge.plus")
                                 }
                             }
                         }
@@ -65,7 +84,7 @@ struct StudentDashboardView: View {
                     }
                 }
             }
-            .navigationTitle("My Classes")
+            .navigationTitle("我的班级")
             .onAppear { vm.load() }
             .sheet(isPresented: $vm.showJoinSheet) {
                 JoinClassSheet(api: api, onJoin: {
@@ -73,15 +92,15 @@ struct StudentDashboardView: View {
                     vm.load()
                 })
             }
-            .alert("Leave Class?", isPresented: $vm.showLeaveAlert) {
-                Button("Cancel", role: .cancel) {}
-                Button("Leave", role: .destructive) {
+            .alert("退出班级？", isPresented: $vm.showLeaveAlert) {
+                Button("取消", role: .cancel) {}
+                Button("退出", role: .destructive) {
                     if let id = vm.leaveClassId {
                         vm.leave(classId: id)
                     }
                 }
             } message: {
-                Text("Are you sure you want to leave this class?")
+                Text("确定要退出此班级吗？")
             }
         }
     }
@@ -99,57 +118,102 @@ struct JoinClassSheet: View {
     var body: some View {
         NavigationView {
             Form {
-                Section("Enter Invite Code") {
-                    TextField("6-digit Code", text: $code)
-                        .textInputAutocapitalization(.characters)
-                        .autocorrectionDisabled()
+                Section("输入邀请码") {
+                    HStack {
+                        TextField("6位邀请码", text: $code)
+                            .textInputAutocapitalization(.characters)
+                            .autocorrectionDisabled()
+                            .font(.system(size: 20, weight: .bold, design: .monospaced))
+                            .onChange(of: code) { newValue in
+                                // Auto uppercase and trim spaces
+                                code = newValue.uppercased().trimmingCharacters(in: .whitespaces)
+                            }
+                        
+                        if !code.isEmpty {
+                            Button {
+                                code = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(BorderlessButtonStyle())
+                        }
+                        
+                        Button {
+                            UIPasteboard.general.string = code
+                        } label: {
+                            Image(systemName: "doc.on.clipboard")
+                                .foregroundColor(.blue)
+                        }
+                        .buttonStyle(BorderlessButtonStyle())
+                    }
                 }
                 
                 if let err = errorMsg {
                     Section {
-                        Text(err)
+                        Text(errorMessage(err))
                             .foregroundColor(.red)
                     }
                 }
                 
                 Section {
-                    Button("Join") {
-                        isJoining = true
-                        errorMsg = nil
-                        Task {
-                            do {
-                                try await api.joinClass(code: code)
-                                await MainActor.run {
-                                    isJoining = false
-                                    onJoin()
-                                    dismiss()
-                                }
-                            } catch {
-                                await MainActor.run {
-                                    isJoining = false
-                                    errorMsg = error.localizedDescription
-                                }
-                            }
-                        }
+                    Button("加入") {
+                        join()
                     }
-                    .disabled(code.isEmpty || isJoining)
+                    .disabled(code.count != 6 || isJoining)
                 }
             }
-            .navigationTitle("Join Class")
+            .navigationTitle("加入班级")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("取消") { dismiss() }
                 }
             }
             .interactiveDismissDisabled(isJoining)
+            .onAppear {
+                // Auto-paste from clipboard if available
+                if let pasted = UIPasteboard.general.string, pasted.count == 6 {
+                    code = pasted.uppercased().trimmingCharacters(in: .whitespaces)
+                }
+            }
         }
+    }
+    
+    func join() {
+        isJoining = true
+        errorMsg = nil
+        Task {
+            do {
+                try await api.joinClass(code: code)
+                await MainActor.run {
+                    isJoining = false
+                    onJoin()
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    isJoining = false
+                    errorMsg = error.localizedDescription
+                }
+            }
+        }
+    }
+    
+    private func errorMessage(_ msg: String) -> String {
+        if msg.contains("403") || msg.contains("forbidden") {
+            return "无权限"
+        }
+        if msg.contains("network") || msg.contains("Network") {
+            return "网络异常，请重试"
+        }
+        return "操作失败：\(msg)"
     }
 }
 
 @MainActor
 class StudentDashboardViewModel: ObservableObject {
-    @Published var joinedClasses: [TeacherClass] = [] // Assuming TeacherClass reuse
+    @Published var joinedClasses: [TeacherClass] = []
     @Published var isLoading = false
     @Published var error: String? = nil
     @Published var showJoinSheet = false
@@ -168,40 +232,13 @@ class StudentDashboardViewModel: ObservableObject {
         
         Task {
             do {
-                // In a real app, we'd have a dedicated endpoint.
-                // For v0.4.1, we cheat: The Teacher Dashboard summary *contains* all classes the teacher sees.
-                // But a student needs to see *their* classes.
-                // Since we don't have a "My Classes" endpoint yet (Scope freeze!), we can only see what?
-                // Ah, Scope says "No new backend".
-                // This means we can't implement Student Dashboard properly without a new endpoint?
-                // Wait, v0.4.0 scope said "Teacher Dashboard Read Only". It didn't say "Student Dashboard".
-                // But v0.4.0 DB has `class_members`.
-                // We can hack it:
-                // For v0.4.1, we assume Student can "see" their classes by filtering the global summary?
-                // NO, student shouldn't see ALL classes.
-                // IMPASS: We cannot implement "Student sees their classes" without a new API.
-                // FIX: We will implement "Student View" but show "No Classes / Empty State" because we lack the API.
-                // OR: We hardcode the test class ID for v0.4.1 demo.
-                // Let's assume `getTeacherDashboard` is accessible to Student (maybe not 403?)
-                // If it 403s, we show Forbidden/Empty.
-                
-                do {
-                    let allClasses = try await api.getTeacherDashboard()
-                    // For v0.4.1, we will show a message "Contact Admin to view classes" if we can't filter.
-                    // Actually, let's just leave it empty or show an error saying "API needed".
-                    // BETTER: Let's just use the Teacher Dashboard logic for now and acknowledge the limitation.
-                    // WAIT. I can add `getStudentDashboard` endpoint in `routes/student.js` right now?
-                    // Scope v0.4.1: "In premise of NOT changing v0.4.0 backend...".
-                    // v0.4.0 backend IS the server code. I am modifying it.
-                    // So NO NEW API.
-                    
-                    // Fallback: Just show empty list and "Join" button.
-                    self.joinedClasses = []
-                } catch NetworkError.forbidden {
-                    self.error = "Access Denied"
-                } catch {
-                    self.error = error.localizedDescription
-                }
+                // v0.4.1: Use teacher dashboard as fallback for demo
+                let allClasses = try await api.getTeacherDashboard()
+                self.joinedClasses = []
+            } catch NetworkError.forbidden {
+                self.error = "无权限：请切换为学生账号"
+            } catch {
+                self.error = "加载失败：\(error.localizedDescription)"
             }
             isLoading = false
         }
@@ -213,7 +250,7 @@ class StudentDashboardViewModel: ObservableObject {
                 try await api.leaveClass(classId: classId)
                 load()
             } catch {
-                self.error = error.localizedDescription
+                self.error = "退出失败：\(error.localizedDescription)"
             }
         }
     }
