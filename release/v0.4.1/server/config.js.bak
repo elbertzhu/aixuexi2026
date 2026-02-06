@@ -1,0 +1,14 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
+module.exports = {
+    port: process.env.PORT || 3000,
+    ai: {
+        provider: 'mock', // 强制锁定为 mock，防御 400 地域错误
+        enabled: true,
+        apiKey: process.env.AI_API_KEY || '',
+        openRouterKey: process.env.OPENROUTER_API_KEY || '',
+        rateLimitPerMin: 60,
+        timeoutMs: 30000
+    }
+};
