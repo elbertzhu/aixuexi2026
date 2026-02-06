@@ -1,19 +1,33 @@
 # Rollback Guide
 
-## Strategy: Revert
-
-If v0.3.0 fails:
-
-1.  **Stop Server**: `Ctrl+C` or `pm2 stop aixuexi-server`.
+## Scenario 1: Server Crash / Instability
+1.  **Stop Server**: `Ctrl+C` or `pkill node`.
 2.  **Revert Code**:
     ```bash
-    git reset --hard v0.2.0
-    # OR if v0.2.0 tag missing
-    git reset --hard HEAD^
+    git reset --hard v0.4.0
     ```
-3.  **Restore DB** (If schema corrupted):
-    *   Restore `data/user_stats.db` from backup `data/user_stats.db.bak` (if created).
+3.  **Restore Dependencies**:
+    ```bash
+    cd server && npm install
+    ```
 4.  **Restart**:
     ```bash
     npm start
     ```
+
+## Scenario 2: DB Corruption
+*Data loss is possible if v0.4.1 introduced schema changes that failed midway.*
+1.  Stop Server.
+2.  Restore Backup:
+    ```bash
+    cp data/user_stats.db.bak data/user_stats.db
+    ```
+    *(Note: Backups are manual. Ensure `data/` is included in backup scripts).*
+
+## Scenario 3: AI Provider Issues (Regional/Limit)
+**Downgrade AI to Mock Mode**:
+1.  Edit `.env`:
+    ```
+    AI_PROVIDER=mock
+    ```
+2.  Restart Server.
