@@ -3,6 +3,7 @@ import SwiftUI
 struct TeacherDashboardView: View {
     @StateObject var vm = TeacherDashboardViewModel()
     @ObservedObject var api = APIService.shared
+    @State private var showAuditSheet = false
     
     var body: some View {
         NavigationView {
@@ -106,6 +107,17 @@ struct TeacherDashboardView: View {
                 }
             }
             .navigationTitle("教师仪表盘")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if vm.selectedClassId != nil {
+                        Button {
+                            showAuditSheet = true
+                        } label: {
+                            Image(systemName: "list.clipboard")
+                        }
+                    }
+                }
+            }
             .onAppear { vm.load() }
             .sheet(isPresented: $vm.showCreateSheet) {
                 CreateClassSheet(api: api, onCreate: {
@@ -118,6 +130,13 @@ struct TeacherDashboardView: View {
                     InviteCodeSheet(api: api, classId: classId, onRotate: {
                         vm.load()
                     })
+                }
+            }
+            .sheet(isPresented: $showAuditSheet) {
+                // Default to first class if none selected, or use selection
+                let targetClassId = vm.selectedClassId ?? vm.filteredClasses.first?.id ?? ""
+                if !targetClassId.isEmpty {
+                    AuditLogView(api: api, classId: targetClassId)
                 }
             }
             .alert("移除学生？", isPresented: $vm.showKickAlert) {
