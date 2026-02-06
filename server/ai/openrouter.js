@@ -3,7 +3,7 @@ const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch
 
 module.exports = {
   generateQuestion: async (level, knownWords = []) => {
-    const model = process.env.OPENROUTER_MODEL || 'google/gemini-pro';
+    const model = process.env.OPENROUTER_MODEL || 'minimax/abab6.5s-chat';
     
     // HARD CAP for stability (prevent 402 errors)
     const MAX_TOKENS = 4096;
