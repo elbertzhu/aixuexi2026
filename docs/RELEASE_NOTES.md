@@ -51,3 +51,21 @@
 ### Tech
 *   **SwiftUI**: Use of `NavigationView`, `List`, `LazyVGrid`, `async/await`.
 *   **Architecture**: MVVM pattern (`TeacherDashboardViewModel`, `APIService`).
+
+## v0.4.1 (2026-02-06) - Class Management UI
+**Client-Side Release (iPad SwiftUI)**
+
+### Features
+*   **Teacher Dashboard**:
+    *   **Create Class**: Added "Create Class" button and modal sheet.
+    *   **Invite Management**: Added QR/Code button to generate and rotate invite codes per class.
+    *   **Kick Student**: Added "Kick" button next to student rows in list.
+*   **Student Dashboard**:
+    *   **My Classes**: New tab showing joined classes.
+    *   **Join Class**: Modal sheet to enter invite code.
+    *   **Leave Class**: Action to leave a class.
+*   **Integration**:
+    *   **API Service**: Updated to support new `/teacher/classes` and `/student/join` endpoints.
+    *   **Models**: Added `TeacherInvite` and `JoinRequest`.
+
+## v0.4.0 (2026-02-06) - Class Invites & Write APIs
