@@ -1,5 +1,27 @@
 # Release Notes
 
+## v0.4.2 (2026-02-06) - UX & Error Handling
+**Client-Side Release (iPad SwiftUI)**
+
+### Features
+*   **Invite Code Experience**:
+    *   Teacher: Added one-tap "Copy to Clipboard" button with toast feedback.
+    *   Student: Join input supports auto-paste from clipboard on appear.
+    *   Auto-uppercase and trim whitespace for invite codes.
+*   **Empty State Optimization**:
+    *   Student "My Classes": Added illustration + "Join Class" call-to-action.
+    *   Teacher Dashboard: Added illustration + "Create Class" call-to-action.
+*   **Loading & Feedback**:
+    *   All network buttons show `disabled` state during requests.
+    *   Progress views added with localized Chinese labels ("加载中...", "生成中...").
+*   **Error Handling (Chinese)**:
+    *   403 Forbidden: Shows "无权限：请使用教师/学生账号登录".
+    *   Network Error: Shows "网络异常，请重试".
+    *   Service Error: Shows "操作失败：原因".
+
+### Dependencies
+*   No new dependencies.
+
 ## v0.4.1 (2026-02-06) - Class Management UI
 **Client-Side Release (iPad SwiftUI)**
 
