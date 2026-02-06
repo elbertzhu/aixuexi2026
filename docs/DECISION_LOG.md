@@ -1,33 +1,33 @@
-# DECISION_LOG.md - 决策记录
+# Decision Log
 
-**版本**: 0.1.0
-**最后更新**: 2026-02-03
+## v0.4.0 (2026-02-06) - Class Invites & Write APIs
 
-## 决策记录
+**Decision:** Implement class invite codes and basic class management write operations (Create, Join, Leave, Kick).
 
-### 2026-02-03 (B 回合交付启动)
-**决策**：选择 SwiftUI + Node.js 技术栈作为 MVP 基线。
-**背景**：符合 iPadOS 原生体验要求，且团队对 Node.js 熟悉度高。
-**影响**：前端需严格遵循 SwiftUI 规范，后端需解耦业务逻辑。
-**状态**：已执行。
+**Key Choices:**
+- **Invite Format:** 6-character alphanumeric (uppercase, stripped of confusing chars 0/O/1/I).
+- **Invite Rotation:** Old codes are marked `revoked` rather than deleted for audit integrity.
+- **API Scope:** Separate routes for Teacher (`/api/teacher`) and Student (`/api/student`) to enforce RBAC at the route level.
+- **Persistence:** Invites stored in `class_invites` table (SQLite).
 
-### 2026-02-03 (B 回合交付启动)
-**决策**：水平测试采用 Mock 数据闭环。
-**背景**：AI API Key 尚未就绪或需严格成本控制。
-**实现**：Server 端硬编码 5 道选择题作为初始测试流，支持分数统计。
-**状态**：已执行。
+**Alternatives Considered:**
+- Token-based invites vs. Simple Codes -> Chosen Simple Codes for ease of manual entry by students.
+- Delete vs. Revoke on Rotate -> Chosen Revoke to keep history of rotations.
 
-### 2026-02-03 (B 回合交付启动)
-**决策**：UI 风格采用通用简洁 Apple 教育风。
-**背景**：无设计稿输入，优先保证可用性与交互流畅。
-**实现**：使用系统原生 NavigationStack, Button, List 组件。
-**状态**：已执行。
+## v0.3.2 (2026-02-06) - Teacher Dashboard UX
 
-### 2026-02-03 (B 回合核心代码交付)
-**决策**：Client UI 组件化拆分。
-**实现**：将 LevelTestView 拆分为 QuestionView (展示) 与 ResultView (结果)，降低耦合。
-**状态**：已执行。
+**Decision:** Improve Teacher Dashboard usability on iPad without backend changes.
 
----
+**Key Choices:**
+- **Filtering:** Client-side filtering by Student ID.
+- **Sorting:** Sort by Activity, Accuracy, SRS Count.
+- **UI Polish:** Skeleton loading, clearer status badges.
 
-**下一步**：将决策同步至代码注释与架构文档。
+## v0.3.1 (2026-02-05) - Teacher Dashboard UI
+
+**Decision:** Initial Teacher Dashboard implementation.
+
+**Key Choices:**
+- **Stack:** Express + SQLite (Existing).
+- **Auth:** Simple Header-based (`x-user-id`, `x-role`) for rapid prototyping.
+- **Metrics:** Accuracy, SRS Pending, 7-Day Activity.
