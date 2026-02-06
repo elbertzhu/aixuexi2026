@@ -42,24 +42,16 @@ class TeacherDashboardViewModel: ObservableObject {
                 }
             }
             
-            // Skip empty classes if searching (optional UX choice, keeping for clarity)
-            // if students.isEmpty && !searchText.isEmpty { return nil }
-            
             // Sort
             students.sort { s1, s2 in
                 switch sortOption {
                 case .activity:
-                    // Primary: Activity (desc), Secondary: Accuracy (desc)
                     if s1.activity_7d != s2.activity_7d {
                         return s1.activity_7d > s2.activity_7d
                     }
                     return s1.accuracy > s2.accuracy
                     
                 case .accuracy:
-                    // Primary: Accuracy (asc - highlight struggling?), Let's do Ascending to see low scores top?
-                    // Spec says "sort", usually means best first or worst first. 
-                    // Let's assume Worst First for Teachers to intervene? Or Best?
-                    // Usually "Ranking" -> High to Low.
                     return s1.accuracy > s2.accuracy
                     
                 case .srsCount:
@@ -67,7 +59,6 @@ class TeacherDashboardViewModel: ObservableObject {
                 }
             }
             
-            // Return new copy of class with filtered students
             return TeacherClass(
                 id: cls.id,
                 className: cls.className,
@@ -90,11 +81,6 @@ class TeacherDashboardViewModel: ObservableObject {
         Task {
             do {
                 allClasses = try await api.getTeacherDashboard()
-                
-                // Set default class if one exists and we want to default to something? 
-                // Spec says: "If no classes hierarchy -> All/Default placeholder". 
-                // We'll stick to 'All' (nil) as default.
-                
             } catch NetworkError.forbidden {
                 isForbidden = true
                 error = "Access Denied (403)"
@@ -105,8 +91,70 @@ class TeacherDashboardViewModel: ObservableObject {
         }
     }
     
+    // v0.4.1: Write Actions
+    @Published var showCreateSheet = false
+    @Published var showInviteSheet = false
+    @Published var selectedClassForInvite: String?
+    @Published var showKickAlert = false
+    @Published var studentToKick: TeacherStudentSummary?
+    
+    func createClass(name: String) {
+        isLoading = true
+        Task {
+            do {
+                _ = try await api.createClass(name: name)
+                await MainActor.run {
+                    isLoading = false
+                    load()
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = error.localizedDescription
+                    isLoading = false
+                }
+            }
+        }
+    }
+    
+    func generateInvite() {
+        guard let classId = selectedClassForInvite else { return }
+        isLoading = true
+        Task {
+            do {
+                _ = try await api.generateInvite(classId: classId)
+                await MainActor.run {
+                    isLoading = false
+                    load()
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = error.localizedDescription
+                    isLoading = false
+                }
+            }
+        }
+    }
+    
+    func kick(studentId: String, from classId: String) {
+        isLoading = true
+        Task {
+            do {
+                try await api.removeStudent(classId: classId, studentId: studentId)
+                await MainActor.run {
+                    isLoading = false
+                    load()
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = error.localizedDescription
+                    isLoading = false
+                }
+            }
+        }
+    }
+    
     func updateUserId(_ id: String) {
         api.currentUserId = id
-        load() // Reload on identity switch
+        load()
     }
 }

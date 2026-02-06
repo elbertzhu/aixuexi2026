@@ -37,15 +37,36 @@ struct TeacherDashboardView: View {
                             
                             List {
                                 ForEach(vm.filteredClasses) { cls in
-                                    Section(header: Text("\(cls.className) (\(cls.students.count))")) {
+                                    Section(header: HStack {
+                                        Text("\(cls.className) (\(cls.students.count))")
+                                        Spacer()
+                                        Button {
+                                            vm.selectedClassForInvite = cls.id
+                                            vm.showInviteSheet = true
+                                        } label: {
+                                            Image(systemName: "qrcode")
+                                        }
+                                        .buttonStyle(BorderlessButtonStyle())
+                                    }) {
                                         if cls.students.isEmpty {
                                             Text("No matching students")
                                                 .foregroundColor(.secondary)
                                                 .italic()
                                         } else {
                                             ForEach(cls.students) { student in
-                                                NavigationLink(destination: TeacherStudentDetailView(studentId: student.id)) {
-                                                    StudentRow(student: student)
+                                                HStack {
+                                                    NavigationLink(destination: TeacherStudentDetailView(studentId: student.id)) {
+                                                        StudentRow(student: student)
+                                                    }
+                                                    // v0.4.1: Kick Button
+                                                    Button {
+                                                        vm.studentToKick = student
+                                                        vm.showKickAlert = true
+                                                    } label: {
+                                                        Image(systemName: "person.badge.minus")
+                                                            .foregroundColor(.red)
+                                                    }
+                                                    .buttonStyle(BorderlessButtonStyle())
                                                 }
                                             }
                                         }
@@ -59,8 +80,31 @@ struct TeacherDashboardView: View {
             }
             .navigationTitle("Teacher Dashboard")
             .onAppear { vm.load() }
+            .sheet(isPresented: $vm.showCreateSheet) {
+                CreateClassSheet(api: api, onCreate: {
+                    vm.showCreateSheet = false
+                    vm.load()
+                })
+            }
+            .sheet(isPresented: $vm.showInviteSheet) {
+                if let classId = vm.selectedClassForInvite {
+                    InviteCodeSheet(api: api, classId: classId, onRotate: {
+                        vm.load()
+                    })
+                }
+            }
+            .alert("Kick Student?", isPresented: $vm.showKickAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Kick", role: .destructive) {
+                    if let student = vm.studentToKick, let classId = vm.selectedClassId {
+                        vm.kick(studentId: student.id, from: classId)
+                    }
+                }
+            } message: {
+                Text("Are you sure you want to remove \(vm.studentToKick?.id ?? "this student")?")
+            }
         }
-        .navigationViewStyle(StackNavigationViewStyle()) // Ensure iPad works like iPhone for this scope
+        .navigationViewStyle(StackNavigationViewStyle())
     }
 }
 
@@ -84,13 +128,17 @@ struct DashboardControls: View {
                 // Class Picker
                 if !vm.availableClasses.isEmpty {
                     Picker("Class", selection: $vm.selectedClassId) {
-                        Text("All Classes").tag(String?.none) // Explicit nil tag
+                        Text("All Classes").tag(String?.none)
                         ForEach(vm.availableClasses) { cls in
-                            Text(cls.className).tag(String?.some(cls.id)) // Wrap ID
+                            Text(cls.className).tag(String?.some(cls.id))
                         }
                     }
                     .pickerStyle(MenuPickerStyle())
                     .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    Text("No Classes")
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 
                 Spacer()
@@ -103,6 +151,14 @@ struct DashboardControls: View {
                 }
                 .pickerStyle(SegmentedPickerStyle())
                 .frame(maxWidth: 200)
+                
+                // v0.4.1: Create Class Button
+                Button {
+                    vm.showCreateSheet = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                }
             }
         }
     }

@@ -53,4 +53,97 @@ class APIService: ObservableObject {
         
         return try JSONDecoder().decode(TeacherStudentDetail.self, from: data)
     }
+    
+    // v0.4.1: Write Operations
+    
+    // Teacher: Create Class
+    func createClass(name: String) async throws -> ClassResponse {
+        guard let url = URL(string: "\(baseURL)/teacher/classes") else { throw NetworkError.invalidURL }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(currentUserId, forHTTPHeaderField: "x-user-id")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(["name": name])
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.unknown }
+        guard httpResponse.statusCode == 200 else { throw NetworkError.serverError }
+        
+        return try JSONDecoder().decode(ClassResponse.self, from: data)
+    }
+    
+    // Teacher: Generate/Rotate Invite
+    func generateInvite(classId: String) async throws -> TeacherInvite {
+        guard let url = URL(string: "\(baseURL)/teacher/classes/\(classId)/invite") else { throw NetworkError.invalidURL }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(currentUserId, forHTTPHeaderField: "x-user-id")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.unknown }
+        guard httpResponse.statusCode == 200 else { throw NetworkError.serverError }
+        
+        return try JSONDecoder().decode(TeacherInvite.self, from: data)
+    }
+    
+    // Teacher: Remove Student
+    func removeStudent(classId: String, studentId: String) async throws {
+        guard let url = URL(string: "\(baseURL)/teacher/classes/\(classId)/members/\(studentId)") else { throw NetworkError.invalidURL }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue(currentUserId, forHTTPHeaderField: "x-user-id")
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.unknown }
+        guard httpResponse.statusCode == 200 else { throw NetworkError.serverError }
+    }
+    
+    // Student: Join Class
+    func joinClass(code: String) async throws {
+        guard let url = URL(string: "\(baseURL)/student/join") else { throw NetworkError.invalidURL }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(currentUserId, forHTTPHeaderField: "x-user-id")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(["code": code])
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.unknown }
+        if httpResponse.statusCode == 404 { throw JoinError.invalidCode }
+        guard httpResponse.statusCode == 200 else { throw NetworkError.serverError }
+    }
+    
+    // Student: Leave Class
+    func leaveClass(classId: String) async throws {
+        guard let url = URL(string: "\(baseURL)/student/leave") else { throw NetworkError.invalidURL }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(currentUserId, forHTTPHeaderField: "x-user-id")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(["classId": classId])
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.unknown }
+        guard httpResponse.statusCode == 200 else { throw NetworkError.serverError }
+    }
+}
+
+enum JoinError: Error, LocalizedError {
+    case invalidCode
+    
+    var errorDescription: String? {
+        switch self {
+        case .invalidCode: return "Invalid or expired invite code"
+        }
+    }
 }

@@ -30,3 +30,21 @@ struct TeacherStudentDetail: Codable, Identifiable {
     let activity_7d: Int
     let last_active: Double?
 }
+
+// v0.4.1: Invite Models
+struct TeacherInvite: Codable {
+    let code: String
+    let class_id: String
+    let status: String
+    let created_at: Int?
+}
+
+struct JoinRequest: Codable {
+    let code: String
+}
+
+struct ClassResponse: Codable {
+    let id: String
+    let name: String
+    let teacherId: String?
+}

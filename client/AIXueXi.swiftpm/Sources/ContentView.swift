@@ -10,9 +10,9 @@ struct AIXueXiApp: App {
                         Label("Teacher", systemImage: "graduationcap.fill")
                     }
                 
-                Text("Student Placeholder")
+                StudentDashboardView()
                     .tabItem {
-                        Label("Learn", systemImage: "book.fill")
+                        Label("Student", systemImage: "book.fill")
                     }
             }
         }
