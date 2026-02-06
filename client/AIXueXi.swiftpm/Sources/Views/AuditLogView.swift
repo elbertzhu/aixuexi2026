@@ -9,16 +9,27 @@ struct AuditLogView: View {
     @State private var isLoadingMore = false
     @State private var errorMsg: String?
     
+    // Export state
+    @State private var isExporting = false
+    @State private var exportMessage: String?
+    @State private var showExportAlert = false
+    
     // Filters
     @State private var selectedAction: String = ""
     @State private var selectedRole: String = ""
-    @State private var showFilters = false
     
     // Pagination
     @State private var offset: Int = 0
     @State private var limit: Int = 20
     @State private var total: Int = 0
     @State private var hasMore: Bool = true
+    
+    var exportFilename: String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyyMMdd-HHmm"
+        let dateStr = dateFormatter.string(from: Date())
+        return "audit_\(classId.prefix(8))_\(dateStr).csv"
+    }
     
     var body: some View {
         NavigationView {
@@ -58,11 +69,18 @@ struct AuditLogView: View {
                     
                     Spacer()
                     
+                    // Export Button with loading state
                     Button {
                         exportCSV()
                     } label: {
-                        Image(systemName: "square.and.arrow.up")
+                        if isExporting {
+                            ProgressView()
+                                .frame(width: 20, height: 20)
+                        } else {
+                            Image(systemName: "square.and.arrow.up")
+                        }
                     }
+                    .disabled(isExporting)
                 }
                 .padding()
                 .background(Color(.systemBackground))
@@ -158,6 +176,11 @@ struct AuditLogView: View {
                 }
             }
             .task { load(reset: true) }
+            .alert("导出结果", isPresented: $showExportAlert) {
+                Button("确定") {}
+            } message: {
+                Text(exportMessage ?? "")
+            }
         }
     }
     
@@ -227,6 +250,9 @@ struct AuditLogView: View {
     }
     
     func exportCSV() {
+        isExporting = true
+        exportMessage = nil
+        
         Task {
             do {
                 let csv = try await api.exportAuditLogs(
@@ -235,12 +261,18 @@ struct AuditLogView: View {
                     actorRole: selectedRole.isEmpty ? nil : selectedRole
                 )
                 await MainActor.run {
-                    // In real app, would trigger share sheet
+                    // Copy to clipboard for demo (real app would use ShareSheet)
                     UIPasteboard.general.string = csv
-                    // Show toast or alert
+                    exportMessage = "已复制到剪贴板：\(exportFilename)"
+                    isExporting = false
+                    showExportAlert = true
                 }
             } catch {
-                // Handle error
+                await MainActor.run {
+                    exportMessage = "导出失败：\(error.localizedDescription)"
+                    isExporting = false
+                    showExportAlert = true
+                }
             }
         }
     }

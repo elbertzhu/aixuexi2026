@@ -12,10 +12,11 @@ function generateInviteCode() {
 }
 
 // v0.5.0: Audit Logger
-function logAudit({ actorId, actorRole, action, target, result, reason = null }) {
+// v0.5.3: Added request_id, ip, user_agent
+function logAudit({ actorId, actorRole, action, target, result, reason = null, requestId = null, ip = null, userAgent = null }) {
     return new Promise((resolve, reject) => {
-        const stmt = db.prepare('INSERT INTO audit_logs (timestamp, actor_id, actor_role, action, target, result, reason) VALUES (?, ?, ?, ?, ?, ?, ?)');
-        stmt.run(Date.now(), actorId, actorRole, action, target, result, reason, (err) => {
+        const stmt = db.prepare('INSERT INTO audit_logs (timestamp, actor_id, actor_role, action, target, result, reason, request_id, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        stmt.run(Date.now(), actorId, actorRole, action, target, result, reason, requestId, ip, userAgent, (err) => {
             if (err) reject(err);
             else resolve();
         });

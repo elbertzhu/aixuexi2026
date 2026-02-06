@@ -51,13 +51,26 @@ router.get('/dashboard/student/:id', async (req, res) => {
     }
 });
 
-// v0.4.0 POST /api/teacher/classes
+// v0.5.0 POST /api/teacher/classes
 // Create a new class
 router.post('/classes', async (req, res) => {
     try {
         const { name } = req.body;
         if (!name) return res.status(400).json({error: "Class name required"});
         const newClass = await classService.createClass(req.user.id, name);
+        
+        // v0.5.3: Audit with ip/ua
+        await classService.logAudit({
+            actorId: req.user.id,
+            actorRole: 'teacher',
+            action: 'CREATE_CLASS',
+            target: newClass.id,
+            result: 'success',
+            requestId: req.headers['x-request-id'] || null,
+            ip: req.ip || req.connection?.remoteAddress || null,
+            userAgent: req.headers['user-agent'] || null
+        });
+        
         res.json(newClass);
     } catch (err) {
         res.status(500).json({error: err.message});
@@ -79,6 +92,19 @@ router.post('/classes/:id/invite', async (req, res) => {
         if (req.body.expiresAt) options.expiresAt = req.body.expiresAt;
 
         const invite = await classService.generateInvite(classId, req.user.id, options);
+        
+        // v0.5.3: Audit with ip/ua
+        await classService.logAudit({
+            actorId: req.user.id,
+            actorRole: 'teacher',
+            action: 'ROTATE_INVITE',
+            target: `${classId}/${invite.code}`,
+            result: 'success',
+            requestId: req.headers['x-request-id'] || null,
+            ip: req.ip || req.connection?.remoteAddress || null,
+            userAgent: req.headers['user-agent'] || null
+        });
+        
         res.json(invite);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -102,7 +128,7 @@ router.get('/classes/:id/invite', async (req, res) => {
 
 // v0.4.0 DELETE /api/teacher/classes/:id/members/:studentId
 // Remove student from class
-// v0.5.0: Added Audit Log
+// v0.5.3: Added ip/ua to audit
 router.delete('/classes/:id/members/:studentId', async (req, res) => {
     try {
         const { id: classId, studentId } = req.params;
@@ -110,6 +136,19 @@ router.delete('/classes/:id/members/:studentId', async (req, res) => {
         if (!isOwner) return res.status(403).json({ error: "Not authorized for this class" });
 
         await classService.removeMember(classId, studentId, req.user.id, 'teacher');
+        
+        // v0.5.3: Audit with ip/ua
+        await classService.logAudit({
+            actorId: req.user.id,
+            actorRole: 'teacher',
+            action: 'KICK_MEMBER',
+            target: `${classId}/${studentId}`,
+            result: 'success',
+            requestId: req.headers['x-request-id'] || null,
+            ip: req.ip || req.connection?.remoteAddress || null,
+            userAgent: req.headers['user-agent'] || null
+        });
+        
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -153,39 +192,113 @@ router.get('/audit', async (req, res) => {
     }
 });
 
-// v0.5.2 GET /api/teacher/audit/export
-// Export audit logs as CSV
+// v0.5.3 GET /api/teacher/audit/export
+// Enhanced CSV export with more fields and mode support
 router.get('/audit/export', async (req, res) => {
     try {
-        const { classId, action, actor_role, from, to, order } = req.query;
+        const { classId, action, actor_role, from, to, order, mode } = req.query;
         
-        const result = await classService.getAuditLogs({ 
-            classId, 
-            action, 
-            actorRole: actor_role,
-            from, 
-            to,
-            limit: 10000, // Max export
-            offset: 0,
-            order: order || 'desc'
-        });
-        
-        // Generate CSV
-        const headers = ['time', 'actor_id', 'actor_role', 'action', 'target', 'result'];
-        let csv = headers.join(',') + '\n';
-        
-        result.items.forEach(row => {
-            const time = new Date(row.timestamp).toISOString();
-            csv += `"${time}","${row.actor_id}","${row.actor_role}","${row.action}","${row.target}","${row.result}"\n`;
-        });
+        // v0.5.3: CSV Headers - stable order
+        const headers = [
+            'time', 'actor_id', 'actor_role', 'action', 
+            'target', 'result', 'reason', 
+            'request_id', 'ip', 'user_agent'
+        ];
         
         res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', 'attachment; filename=audit_logs.csv');
-        res.send(csv);
+        res.setHeader('Content-Disposition', `attachment; filename=audit_${classId || 'all'}_${new Date().toISOString().slice(0,19).replace(/:/g,'')}.csv`);
+        
+        // Write headers
+        res.write(headers.join(',') + '\n');
+        
+        if (mode === 'all') {
+            // Streaming mode: fetch in batches and stream
+            const MAX_TOTAL = 100000; // Safety limit
+            let offset = 0;
+            const limit = 1000;
+            let totalWritten = 0;
+            
+            while (totalWritten < MAX_TOTAL) {
+                const result = await classService.getAuditLogs({ 
+                    classId, 
+                    action, 
+                    actorRole: actor_role,
+                    from, 
+                    to,
+                    order: order || 'desc',
+                    limit,
+                    offset
+                });
+                
+                if (result.items.length === 0) break;
+                
+                for (const row of result.items) {
+                    const line = formatCsvRow(row);
+                    res.write(line + '\n');
+                    totalWritten++;
+                }
+                
+                offset += limit;
+                
+                // If we got fewer than limit, we're done
+                if (result.items.length < limit) break;
+            }
+            
+            res.end();
+        } else {
+            // Page mode (default): limited export
+            const result = await classService.getAuditLogs({ 
+                classId, 
+                action, 
+                actorRole: actor_role,
+                from, 
+                to,
+                order: order || 'desc',
+                limit: 10000, // Max for page mode
+                offset: 0
+            });
+            
+            for (const row of result.items) {
+                const line = formatCsvRow(row);
+                res.write(line + '\n');
+            }
+            
+            res.end();
+        }
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('Export error:', err);
+        if (!res.headersSent) {
+            res.status(500).json({ error: err.message });
+        }
     }
 });
+
+// Helper to format CSV row
+function formatCsvRow(row) {
+    const escape = (val) => {
+        if (val === null || val === undefined) return '';
+        const str = String(val);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+    };
+    
+    const time = row.timestamp ? new Date(row.timestamp).toISOString() : '';
+    
+    return [
+        escape(time),
+        escape(row.actor_id),
+        escape(row.actor_role),
+        escape(row.action),
+        escape(row.target),
+        escape(row.result),
+        escape(row.reason),
+        escape(row.request_id),
+        escape(row.ip),
+        escape(row.user_agent)
+    ].join(',');
+}
 
 
 // Deprecated Helper (v0.3.0 legacy, kept for backward compat if any tests use it, but prefer POST /classes)

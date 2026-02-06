@@ -181,12 +181,14 @@ class APIService: ObservableObject {
     }
     
     // v0.5.2: Export Audit Logs as CSV
+    // v0.5.3: Added mode parameter
     func exportAuditLogs(
         classId: String,
         action: String?,
-        actorRole: String?
+        actorRole: String?,
+        mode: String = "page"
     ) async throws -> String {
-        var urlStr = "\(baseURL)/teacher/audit/export?classId=\(classId)"
+        var urlStr = "\(baseURL)/teacher/audit/export?classId=\(classId)&mode=\(mode)"
         if let a = action { urlStr += "&action=\(a)" }
         if let r = actorRole { urlStr += "&actor_role=\(r)" }
         
@@ -217,6 +219,7 @@ enum JoinError: Error, LocalizedError {
 }
 
 // v0.5.1: Audit Log Model
+// v0.5.3: Added request_id, ip, user_agent
 struct AuditLog: Codable, Identifiable {
     let id: Int
     let timestamp: Int
@@ -226,6 +229,9 @@ struct AuditLog: Codable, Identifiable {
     let target: String
     let result: String
     let reason: String?
+    let request_id: String?
+    let ip: String?
+    let user_agent: String?
 }
 
 // v0.5.2: Paginated Audit Response

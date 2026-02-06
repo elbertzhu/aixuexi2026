@@ -91,6 +91,7 @@ function init() {
         });
 
         // v0.5.0: Audit Logs
+        // v0.5.3: Added request_id, ip, user_agent columns
         db.run(`CREATE TABLE IF NOT EXISTS audit_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp INTEGER NOT NULL,
@@ -99,9 +100,23 @@ function init() {
             action TEXT NOT NULL,
             target TEXT NOT NULL,
             result TEXT NOT NULL,
-            reason TEXT
+            reason TEXT,
+            request_id TEXT,
+            ip TEXT,
+            user_agent TEXT
         )`, (err) => {
             if (err) console.error('Failed to create audit_logs table:', err);
+        });
+        
+        // v0.5.3: Migrate existing table to add new columns if missing
+        db.run("ALTER TABLE audit_logs ADD COLUMN request_id TEXT", (err) => {
+            // Ignore error if column exists
+        });
+        db.run("ALTER TABLE audit_logs ADD COLUMN ip TEXT", (err) => {
+            // Ignore error if column exists
+        });
+        db.run("ALTER TABLE audit_logs ADD COLUMN user_agent TEXT", (err) => {
+            // Ignore error if column exists
         });
         
         console.log('Stats DB Initialized at', dbPath);

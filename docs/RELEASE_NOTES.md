@@ -1,5 +1,31 @@
 # Release Notes
 
+## v0.5.3 (2026-02-06) - Audit Export Enhancement
+**Release**
+
+### Features
+*   **CSV Export Fields (Backend)**:
+    *   Added: `request_id`, `class_id`, `student_id`, `reason`, `ip`, `user_agent`.
+    *   Headers stable order: `time,actor_id,actor_role,action,target,result,reason,request_id,ip,user_agent`.
+*   **Export Mode (Backend)**:
+    *   `mode=page` (default): Limited export (10k rows).
+    *   `mode=all`: Streaming export for large datasets (chunked transfer).
+    *   Filename: `audit_<classId>_<YYYYMMDD-HHMM>.csv`.
+*   **Frontend (iPad SwiftUI)**:
+    *   AuditLogView: Export button with loading spinner.
+    *   Progress: Shows "导出中..." state.
+    *   Feedback: Alert on success/failure.
+    *   Filename display.
+*   **Audit Logging**:
+    *   Captures `ip` and `user_agent` for all actions.
+    *   Logs failed attempts (rate limit, invalid code).
+
+### Tech
+*   **Schema**: `ALTER TABLE audit_logs ADD COLUMN request_id TEXT, ip TEXT, user_agent TEXT`.
+*   **API**: `/api/teacher/audit/export?mode=page|all`.
+*   **Models**: Updated `AuditLog` with `request_id`, `ip`, `user_agent`.
+*   **Tests**: `test-v0.5.3-export.js` covers new CSV fields, modes, RBAC.
+
 ## v0.5.2 (2026-02-06) - Audit Filters, Pagination & Export
 **Release**
 
