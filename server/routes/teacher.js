@@ -117,15 +117,71 @@ router.delete('/classes/:id/members/:studentId', async (req, res) => {
 });
 
 // v0.5.0 GET /api/teacher/audit
-// Query audit logs
+// Query audit logs with filters and pagination
 router.get('/audit', async (req, res) => {
     try {
-        const { classId, limit } = req.query;
-        const logs = await classService.getAuditLogs({ 
-            classId, 
-            limit: limit ? parseInt(limit) : 100 
+        const { classId, action, actor_role, from, to, limit, offset, order } = req.query;
+        
+        const [items, total] = await Promise.all([
+            classService.getAuditLogs({ 
+                classId, 
+                action, 
+                actorRole: actor_role,
+                from, 
+                to,
+                limit, 
+                offset: offset || 0,
+                order: order || 'desc'
+            }),
+            classService.countAuditLogs({ 
+                classId, 
+                action, 
+                actorRole: actor_role,
+                from, 
+                to 
+            })
+        ]);
+        
+        res.json({
+            items: items.items,
+            total,
+            limit: items.limit,
+            offset: items.offset
         });
-        res.json(logs);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// v0.5.2 GET /api/teacher/audit/export
+// Export audit logs as CSV
+router.get('/audit/export', async (req, res) => {
+    try {
+        const { classId, action, actor_role, from, to, order } = req.query;
+        
+        const result = await classService.getAuditLogs({ 
+            classId, 
+            action, 
+            actorRole: actor_role,
+            from, 
+            to,
+            limit: 10000, // Max export
+            offset: 0,
+            order: order || 'desc'
+        });
+        
+        // Generate CSV
+        const headers = ['time', 'actor_id', 'actor_role', 'action', 'target', 'result'];
+        let csv = headers.join(',') + '\n';
+        
+        result.items.forEach(row => {
+            const time = new Date(row.timestamp).toISOString();
+            csv += `"${time}","${row.actor_id}","${row.actor_role}","${row.action}","${row.target}","${row.result}"\n`;
+        });
+        
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename=audit_logs.csv');
+        res.send(csv);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

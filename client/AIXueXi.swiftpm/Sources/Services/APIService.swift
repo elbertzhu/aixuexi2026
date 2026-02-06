@@ -140,9 +140,32 @@ class APIService: ObservableObject {
         guard httpResponse.statusCode == 200 else { throw NetworkError.serverError }
     }
     
-    // v0.5.1: Teacher Audit Logs
+    // v0.5.1: Teacher Audit Logs (Legacy)
+    // v0.5.2: Updated to use paginated endpoint
     func getAuditLogs(classId: String, limit: Int = 100) async throws -> [AuditLog] {
-        guard let url = URL(string: "\(baseURL)/teacher/audit?classId=\(classId)&limit=\(limit)") else { throw NetworkError.invalidURL }
+        let result = try await getAuditLogsPaginated(
+            classId: classId,
+            action: nil,
+            actorRole: nil,
+            offset: 0,
+            limit: limit
+        )
+        return result.items
+    }
+    
+    // v0.5.2: Paginated Audit Logs
+    func getAuditLogsPaginated(
+        classId: String,
+        action: String?,
+        actorRole: String?,
+        offset: Int,
+        limit: Int
+    ) async throws -> AuditLogResponse {
+        var urlStr = "\(baseURL)/teacher/audit?classId=\(classId)&limit=\(limit)&offset=\(offset)"
+        if let a = action { urlStr += "&action=\(a)" }
+        if let r = actorRole { urlStr += "&actor_role=\(r)" }
+        
+        guard let url = URL(string: urlStr) else { throw NetworkError.invalidURL }
         
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -154,7 +177,32 @@ class APIService: ObservableObject {
         if httpResponse.statusCode == 403 { throw NetworkError.forbidden }
         guard httpResponse.statusCode == 200 else { throw NetworkError.serverError }
         
-        return try JSONDecoder().decode([AuditLog].self, from: data)
+        return try JSONDecoder().decode(AuditLogResponse.self, from: data)
+    }
+    
+    // v0.5.2: Export Audit Logs as CSV
+    func exportAuditLogs(
+        classId: String,
+        action: String?,
+        actorRole: String?
+    ) async throws -> String {
+        var urlStr = "\(baseURL)/teacher/audit/export?classId=\(classId)"
+        if let a = action { urlStr += "&action=\(a)" }
+        if let r = actorRole { urlStr += "&actor_role=\(r)" }
+        
+        guard let url = URL(string: urlStr) else { throw NetworkError.invalidURL }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(currentUserId, forHTTPHeaderField: "x-user-id")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.unknown }
+        if httpResponse.statusCode == 403 { throw NetworkError.forbidden }
+        guard httpResponse.statusCode == 200 else { throw NetworkError.serverError }
+        
+        return String(data: data, encoding: .utf8) ?? ""
     }
 }
 
@@ -178,4 +226,12 @@ struct AuditLog: Codable, Identifiable {
     let target: String
     let result: String
     let reason: String?
+}
+
+// v0.5.2: Paginated Audit Response
+struct AuditLogResponse: Codable {
+    let items: [AuditLog]
+    let total: Int
+    let limit: Int
+    let offset: Int
 }

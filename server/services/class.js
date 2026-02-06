@@ -133,7 +133,7 @@ module.exports = {
         });
     },
 
-    // v0.5.0: Audit Query
+    // v0.5.2: Enhanced Audit Query
     getAuditLogs: (filters = {}) => {
         return new Promise((resolve, reject) => {
             let query = 'SELECT * FROM audit_logs WHERE 1=1';
@@ -149,16 +149,82 @@ module.exports = {
                 params.push(filters.actorId);
             }
 
-            query += ' ORDER BY timestamp DESC';
-            
-            if (filters.limit) {
-                query += ' LIMIT ?';
-                params.push(filters.limit);
+            if (filters.action) {
+                query += ' AND action = ?';
+                params.push(filters.action);
             }
+            
+            if (filters.actorRole) {
+                query += ' AND actor_role = ?';
+                params.push(filters.actorRole);
+            }
+
+            if (filters.from) {
+                query += ' AND timestamp >= ?';
+                params.push(parseInt(filters.from));
+            }
+
+            if (filters.to) {
+                query += ' AND timestamp <= ?';
+                params.push(parseInt(filters.to));
+            }
+
+            // Order
+            const order = filters.order === 'asc' ? 'ASC' : 'DESC';
+            query += ` ORDER BY timestamp ${order}`;
+            
+            // Limit & Offset
+            const limit = filters.limit ? parseInt(filters.limit) : 100;
+            const offset = filters.offset ? parseInt(filters.offset) : 0;
+            
+            query += ` LIMIT ${limit} OFFSET ${offset}`;
 
             db.all(query, params, (err, rows) => {
                 if (err) reject(err);
-                else resolve(rows);
+                else resolve({
+                    items: rows,
+                    total: rows.length, // Note: This is page count, not total count. For true total, another query needed.
+                    limit,
+                    offset
+                });
+            });
+        });
+    },
+
+    // v0.5.2: Count Audit Logs (for pagination)
+    countAuditLogs: (filters = {}) => {
+        return new Promise((resolve, reject) => {
+            let query = 'SELECT COUNT(*) as total FROM audit_logs WHERE 1=1';
+            const params = [];
+            
+            if (filters.classId) {
+                query += ' AND target LIKE ?';
+                params.push(`${filters.classId}%`);
+            }
+            
+            if (filters.action) {
+                query += ' AND action = ?';
+                params.push(filters.action);
+            }
+            
+            if (filters.actorRole) {
+                query += ' AND actor_role = ?';
+                params.push(filters.actorRole);
+            }
+
+            if (filters.from) {
+                query += ' AND timestamp >= ?';
+                params.push(parseInt(filters.from));
+            }
+
+            if (filters.to) {
+                query += ' AND timestamp <= ?';
+                params.push(parseInt(filters.to));
+            }
+
+            db.get(query, params, (err, row) => {
+                if (err) reject(err);
+                else resolve(row.total);
             });
         });
     },

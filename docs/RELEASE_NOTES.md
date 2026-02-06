@@ -1,5 +1,24 @@
 # Release Notes
 
+## v0.5.2 (2026-02-06) - Audit Filters, Pagination & Export
+**Release**
+
+### Features
+*   **Backend**:
+    *   Extended `/api/teacher/audit` with filters: `action`, `actor_role`, `from`, `to`, `order=desc|asc`.
+    *   Added pagination: `items`, `total`, `limit`, `offset`.
+    *   New endpoint: `/api/teacher/audit/export` returns CSV (`time,actor_id,actor_role,action,target,result`).
+*   **Frontend (iPad SwiftUI)**:
+    *   AuditLogView: Added filter bar (Action/Role).
+    *   Pagination: "Load More" button for infinite scroll.
+    *   Export: CSV export button (copies to clipboard for demo).
+    *   Empty State: "暂无符合条件的记录".
+
+### Tech
+*   **API**: `getAuditLogsPaginated()`, `exportAuditLogs()`.
+*   **Models**: `AuditLogResponse` (paginated).
+*   **Tests**: `test-v0.5.2-audit.js` covers filters, pagination, CSV, RBAC.
+
 ## v0.5.1 (2026-02-06) - UI Integration for Anti-Abuse
 **Client-Side Release (iPad SwiftUI)**
 
