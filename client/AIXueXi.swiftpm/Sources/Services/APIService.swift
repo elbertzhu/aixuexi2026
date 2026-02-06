@@ -4,14 +4,16 @@ enum NetworkError: Error, LocalizedError {
     case invalidURL
     case forbidden
     case serverError
+    case rateLimited
     case unknown
     
     var errorDescription: String? {
         switch self {
-        case .forbidden: return "403 Forbidden: Access Denied"
-        case .serverError: return "Server Error"
-        case .invalidURL: return "Invalid URL"
-        case .unknown: return "Unknown Error"
+        case .forbidden: return "403 无权限"
+        case .serverError: return "服务器错误"
+        case .invalidURL: return "无效 URL"
+        case .rateLimited: return "请求过于频繁，请稍后再试"
+        case .unknown: return "未知错误"
         }
     }
 }
@@ -74,7 +76,7 @@ class APIService: ObservableObject {
         return try JSONDecoder().decode(ClassResponse.self, from: data)
     }
     
-    // Teacher: Generate/Rotate Invite
+    // Teacher: Generate/Rotate Invite (v0.5.1: Updated to return usage info)
     func generateInvite(classId: String) async throws -> TeacherInvite {
         guard let url = URL(string: "\(baseURL)/teacher/classes/\(classId)/invite") else { throw NetworkError.invalidURL }
         
@@ -104,7 +106,7 @@ class APIService: ObservableObject {
         guard httpResponse.statusCode == 200 else { throw NetworkError.serverError }
     }
     
-    // Student: Join Class
+    // Student: Join Class (v0.5.1: Added 429 handling)
     func joinClass(code: String) async throws {
         guard let url = URL(string: "\(baseURL)/student/join") else { throw NetworkError.invalidURL }
         
@@ -118,6 +120,7 @@ class APIService: ObservableObject {
         
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.unknown }
         if httpResponse.statusCode == 404 { throw JoinError.invalidCode }
+        if httpResponse.statusCode == 429 { throw NetworkError.rateLimited }
         guard httpResponse.statusCode == 200 else { throw NetworkError.serverError }
     }
     
@@ -136,6 +139,23 @@ class APIService: ObservableObject {
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.unknown }
         guard httpResponse.statusCode == 200 else { throw NetworkError.serverError }
     }
+    
+    // v0.5.1: Teacher Audit Logs
+    func getAuditLogs(classId: String, limit: Int = 100) async throws -> [AuditLog] {
+        guard let url = URL(string: "\(baseURL)/teacher/audit?classId=\(classId)&limit=\(limit)") else { throw NetworkError.invalidURL }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(currentUserId, forHTTPHeaderField: "x-user-id")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.unknown }
+        if httpResponse.statusCode == 403 { throw NetworkError.forbidden }
+        guard httpResponse.statusCode == 200 else { throw NetworkError.serverError }
+        
+        return try JSONDecoder().decode([AuditLog].self, from: data)
+    }
 }
 
 enum JoinError: Error, LocalizedError {
@@ -143,7 +163,19 @@ enum JoinError: Error, LocalizedError {
     
     var errorDescription: String? {
         switch self {
-        case .invalidCode: return "Invalid or expired invite code"
+        case .invalidCode: return "邀请码无效、已过期或已达使用上限"
         }
     }
+}
+
+// v0.5.1: Audit Log Model
+struct AuditLog: Codable, Identifiable {
+    let id: Int
+    let timestamp: Int
+    let actor_id: String
+    let actor_role: String
+    let action: String
+    let target: String
+    let result: String
+    let reason: String?
 }

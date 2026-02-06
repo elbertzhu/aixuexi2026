@@ -32,10 +32,14 @@ struct TeacherStudentDetail: Codable, Identifiable {
 }
 
 // v0.4.1: Invite Models
+// v0.5.1: Added usage_limit, usage_count, expires_at
 struct TeacherInvite: Codable {
     let code: String
     let class_id: String
     let status: String
+    let usage_limit: Int?
+    let usage_count: Int?
+    let expires_at: Int?
     let created_at: Int?
 }
 

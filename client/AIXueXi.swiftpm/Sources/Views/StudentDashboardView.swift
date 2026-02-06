@@ -207,6 +207,15 @@ struct JoinClassSheet: View {
         if msg.contains("network") || msg.contains("Network") {
             return "网络异常，请重试"
         }
+        if msg.contains("rate") || msg.contains("Rate") || msg.contains("429") {
+            return "请求过于频繁，请稍后再试"
+        }
+        if msg.contains("过期") || msg.contains("invalid") {
+            return "邀请码无效或已过期"
+        }
+        if msg.contains("limit") || msg.contains("上限") {
+            return "邀请码已达使用上限"
+        }
         return "操作失败：\(msg)"
     }
 }

@@ -1,5 +1,22 @@
 # Release Notes
 
+## v0.5.1 (2026-02-06) - UI Integration for Anti-Abuse
+**Client-Side Release (iPad SwiftUI)**
+
+### Features
+*   **Invite Usage Display**:
+    *   Teacher: Shows usage count and progress bar (e.g., "2 / 30").
+    *   Displays expiry date/time when set.
+*   **Enhanced Error Handling**:
+    *   Rate Limited (429): Shows "请求过于频繁，请稍后再试".
+    *   Usage Limit Reached: Shows "邀请码已达使用上限".
+    *   Expired Code: Shows "邀请码已过期".
+*   **API Integration**:
+    *   Updated `TeacherInvite` model with `usage_limit`, `usage_count`, `expires_at`.
+    *   Added `AuditLog` model and `getAuditLogs` API for future UI.
+*   **Stability**:
+    *   Improved error parsing from server responses.
+
 ## v0.5.0 (2026-02-06) - Invite Anti-Abuse & Audit
 **Backend Release**
 

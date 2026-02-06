@@ -74,7 +74,7 @@ struct InviteCodeSheet: View {
     let onRotate: () -> Void
     
     @Environment(\.dismiss) var dismiss
-    @State private var code: String?
+    @State private var invite: TeacherInvite?
     @State private var isLoading = false
     @State private var errorMsg: String?
     @State private var showCopiedToast = false
@@ -82,36 +82,61 @@ struct InviteCodeSheet: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                if let c = code {
-                    Text("邀请码")
-                        .font(.headline)
-                    
-                    HStack {
-                        Text(c)
-                            .font(.system(size: 32, weight: .bold, design: .monospaced))
-                            .tracking(4)
-                            .padding()
-                            .background(Color.orange.opacity(0.1))
-                            .cornerRadius(8)
+                if let inv = invite {
+                    // Code Display
+                    VStack(spacing: 12) {
+                        Text("邀请码")
+                            .font(.headline)
                         
-                        Button {
-                            UIPasteboard.general.string = c
-                            showCopiedToast = true
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                showCopiedToast = false
+                        HStack {
+                            Text(inv.code)
+                                .font(.system(size: 32, weight: .bold, design: .monospaced))
+                                .tracking(4)
+                                .padding()
+                                .background(Color.orange.opacity(0.1))
+                                .cornerRadius(8)
+                            
+                            Button {
+                                UIPasteboard.general.string = inv.code
+                                showCopiedToast = true
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    showCopiedToast = false
+                                }
+                            } label: {
+                                Image(systemName: "doc.on.doc")
+                                    .font(.title3)
+                                    .foregroundColor(.blue)
                             }
-                        } label: {
-                            Image(systemName: "doc.on.doc")
-                                .font(.title3)
-                                .foregroundColor(.blue)
+                            .buttonStyle(BorderlessButtonStyle())
                         }
-                        .buttonStyle(BorderlessButtonStyle())
+                    }
+                    
+                    // Usage Info (v0.5.1)
+                    if let limit = inv.usage_limit, let count = inv.usage_count {
+                        VStack(spacing: 4) {
+                            Text("使用次数：\(count) / \(limit)")
+                                .font(.subheadline)
+                                .foregroundColor(count >= limit ? .red : .secondary)
+                            
+                            ProgressView(value: Double(count), total: Double(limit))
+                                .progressViewStyle(LinearProgressViewStyle(tint: count >= limit ? .red : .green))
+                        }
+                        .padding(.horizontal)
+                    }
+                    
+                    // Expiry Info
+                    if let expires = inv.expires_at {
+                        let isExpired = expires < Int(Date().timeIntervalSince1970) * 1000
+                        Text(isExpired ? "已过期" : "有效期至：\(formatDate(expires))")
+                            .font(.caption)
+                            .foregroundColor(isExpired ? .red : .secondary)
                     }
                     
                     Text("分享此码给学生加入班级")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
+                    
                 } else if isLoading {
                     ProgressView("生成中...")
                 } else if let err = errorMsg {
@@ -128,7 +153,7 @@ struct InviteCodeSheet: View {
                 .disabled(isLoading)
             }
             .padding()
-            .navigationTitle("邀请码")
+            .navigationTitle("邀请码详情")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -158,9 +183,9 @@ struct InviteCodeSheet: View {
         errorMsg = nil
         Task {
             do {
-                let invite = try await api.generateInvite(classId: classId)
+                let newInvite = try await api.generateInvite(classId: classId)
                 await MainActor.run {
-                    code = invite.code
+                    invite = newInvite
                     isLoading = false
                     onRotate()
                 }
@@ -180,6 +205,16 @@ struct InviteCodeSheet: View {
         if msg.contains("network") || msg.contains("Network") {
             return "网络异常，请重试"
         }
+        if msg.contains("rate") || msg.contains("Rate") {
+            return "请求过于频繁，请稍后再试"
+        }
         return "操作失败：\(msg)"
+    }
+    
+    private func formatDate(_ ts: Int) -> String {
+        let date = Date(timeIntervalSince1970: Double(ts) / 1000)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter.string(from: date)
     }
 }
