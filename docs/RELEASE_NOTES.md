@@ -1,5 +1,34 @@
 # Release Notes
 
+## v0.6.0 (2026-02-06) - Admin Global Audit
+**Release**
+
+### Features
+*   **Role & Permissions**:
+    *   New role: `admin`.
+    *   RBAC: `admin` (cross-class), `teacher` (own class only), `student/parent` (forbidden).
+    *   Mock header: `x-role: admin`.
+*   **Global Audit API**:
+    *   `GET /api/admin/audit`: Cross-class audit logs.
+    *   Parameters: `classId` (optional), `action`, `actor_role`, `from`, `to`, `limit`, `offset`, `order`.
+    *   Returns: `{items, total, limit, offset}`.
+*   **Global Export**:
+    *   `GET /api/admin/audit/export`: CSV export for all classes.
+    *   `mode=all` requires `from/to` (400 otherwise).
+*   **Rate Limiting**:
+    *   Admin endpoints: 30 req/min per user/IP.
+*   **Frontend (iPad SwiftUI)**:
+    *   `AdminAuditView`: Global audit with filters (class, action, role, date range).
+    *   Pagination: "Load More".
+    *   Export: CSV export button.
+    *   RBAC indicators: "403 无权限" for non-admin.
+
+### Tech
+*   **Auth**: `middleware.js` supports `admin` role.
+*   **Routes**: `routes/admin.js` (new), `routes/teacher.js` unchanged.
+*   **API**: `getAdminAuditLogs()`, `exportAdminAuditLogs()` in `APIService`.
+*   **Tests**: `test-v0.6.0-admin-audit.js` covers RBAC, filters, rate limit.
+
 ## v0.5.3 (2026-02-06) - Audit Export Enhancement
 **Release**
 

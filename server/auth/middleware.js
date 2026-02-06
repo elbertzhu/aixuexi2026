@@ -1,7 +1,7 @@
 const authService = require('./service');
 
 // Mock Auth Middleware
-// Expects header: x-user-id
+// Expects header: x-user-id, x-role (optional)
 function authenticate(req, res, next) {
     const userId = req.headers['x-user-id'];
     const role = req.headers['x-role'] || 'student';
@@ -14,19 +14,15 @@ function authenticate(req, res, next) {
     authService.getUser(userId).then(user => {
         if (!user) {
             // Auto-create for dev convenience
-            return authService.createUser(userId, userId, role).then(newUser => {
+            // Allow creating admin if header specifies it
+            const effectiveRole = ['admin', 'teacher', 'student', 'parent'].includes(role) ? role : 'student';
+            return authService.createUser(userId, userId, effectiveRole).then(newUser => {
                 req.user = newUser;
                 next();
             });
         }
-        // If user exists but header says different role (for testing RBAC), 
-        // prefer header if valid (simple mock logic)
-        if (user.role !== role && ['teacher', 'student', 'parent'].includes(role)) {
-             // Update role in memory for this request only? Or update DB?
-             // For simplicity, let's just trust the Header for testing if it overrides.
-             // But we need to ensure the middleware respects the override.
-             // The issue is `authenticate` populates `req.user`.
-             // If I want to test RBAC, I want to force `req.user.role = 'student'` even if DB says 'teacher'.
+        // Allow role override via header for testing RBAC
+        if (['admin', 'teacher', 'student', 'parent'].includes(role)) {
              req.user = { ...user, role: role };
         } else {
              req.user = user;

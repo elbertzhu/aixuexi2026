@@ -43,12 +43,14 @@ const pipeline = require('./stats/pipeline');
 const parentRoutes = require('./routes/parent');
 const teacherRoutes = require('./routes/teacher');
 const studentRoutes = require('./routes/student');
+const adminRoutes = require('./routes/admin'); // v0.6.0
 
 // app and mw already init at top
 // Just add routes
 app.use('/api/parent', parentRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/student', studentRoutes);
+app.use('/api/admin', adminRoutes); // v0.6.0: Admin audit routes
 
 
 // In-memory session store (Mock DB)

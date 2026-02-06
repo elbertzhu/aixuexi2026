@@ -109,11 +109,21 @@ struct TeacherDashboardView: View {
             .navigationTitle("教师仪表盘")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if vm.selectedClassId != nil {
-                        Button {
-                            showAuditSheet = true
+                    HStack {
+                        // v0.6.0: Admin Global Audit Entry
+                        Menu {
+                            Button {
+                                showAuditSheet = true
+                            } label: {
+                                Label("审计记录", systemImage: "list.clipboard")
+                            }
+                            Button {
+                                // v0.6.0: Admin Global Audit
+                            } label: {
+                                Label("全局审计 (Admin)", systemImage: "globe")
+                            }
                         } label: {
-                            Image(systemName: "list.clipboard")
+                            Image(systemName: "ellipsis.circle")
                         }
                     }
                 }
@@ -133,11 +143,7 @@ struct TeacherDashboardView: View {
                 }
             }
             .sheet(isPresented: $showAuditSheet) {
-                // Default to first class if none selected, or use selection
-                let targetClassId = vm.selectedClassId ?? vm.filteredClasses.first?.id ?? ""
-                if !targetClassId.isEmpty {
-                    AuditLogView(api: api, classId: targetClassId)
-                }
+                AdminAuditView()
             }
             .alert("移除学生？", isPresented: $vm.showKickAlert) {
                 Button("取消", role: .cancel) {}

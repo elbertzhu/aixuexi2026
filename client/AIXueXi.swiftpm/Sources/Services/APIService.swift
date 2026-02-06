@@ -182,6 +182,7 @@ class APIService: ObservableObject {
     
     // v0.5.2: Export Audit Logs as CSV
     // v0.5.3: Added mode parameter
+    // v0.6.0: Admin APIs
     func exportAuditLogs(
         classId: String,
         action: String?,
@@ -202,6 +203,74 @@ class APIService: ObservableObject {
         
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.unknown }
         if httpResponse.statusCode == 403 { throw NetworkError.forbidden }
+        guard httpResponse.statusCode == 200 else { throw NetworkError.serverError }
+        
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+    
+    // v0.6.0: Admin Global Audit Logs
+    func getAdminAuditLogs(
+        classId: String?,
+        action: String?,
+        actorRole: String?,
+        from: Int?,
+        to: Int?,
+        offset: Int,
+        limit: Int
+    ) async throws -> AuditLogResponse {
+        var urlStr = "\(baseURL)/admin/audit?limit=\(limit)&offset=\(offset)"
+        if let cid = classId { urlStr += "&classId=\(cid)" }
+        if let a = action { urlStr += "&action=\(a)" }
+        if let r = actorRole { urlStr += "&actor_role=\(r)" }
+        if let f = from { urlStr += "&from=\(f)" }
+        if let t = to { urlStr += "&to=\(t)" }
+        
+        guard let url = URL(string: urlStr) else { throw NetworkError.invalidURL }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(currentUserId, forHTTPHeaderField: "x-user-id")
+        request.setValue("admin", forHTTPHeaderField: "x-role")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.unknown }
+        if httpResponse.statusCode == 403 { throw NetworkError.forbidden }
+        if httpResponse.statusCode == 429 { throw NetworkError.rateLimited }
+        guard httpResponse.statusCode == 200 else { throw NetworkError.serverError }
+        
+        return try JSONDecoder().decode(AuditLogResponse.self, from: data)
+    }
+    
+    // v0.6.0: Admin Export
+    func exportAdminAuditLogs(
+        classId: String?,
+        action: String?,
+        actorRole: String?,
+        from: Int?,
+        to: Int?,
+        mode: String = "page"
+    ) async throws -> String {
+        var urlStr = "\(baseURL)/admin/audit/export?mode=\(mode)"
+        if let cid = classId { urlStr += "&classId=\(cid)" }
+        if let a = action { urlStr += "&action=\(a)" }
+        if let r = actorRole { urlStr += "&actor_role=\(r)" }
+        if let f = from { urlStr += "&from=\(f)" }
+        if let t = to { urlStr += "&to=\(t)" }
+        
+        guard let url = URL(string: urlStr) else { throw NetworkError.invalidURL }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(currentUserId, forHTTPHeaderField: "x-user-id")
+        request.setValue("admin", forHTTPHeaderField: "x-role")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.unknown }
+        if httpResponse.statusCode == 403 { throw NetworkError.forbidden }
+        if httpResponse.statusCode == 429 { throw NetworkError.rateLimited }
+        if httpResponse.statusCode == 400 { throw NetworkError.serverError } // Missing params
         guard httpResponse.statusCode == 200 else { throw NetworkError.serverError }
         
         return String(data: data, encoding: .utf8) ?? ""
