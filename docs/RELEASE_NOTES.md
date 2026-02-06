@@ -1,5 +1,27 @@
 # Release Notes
 
+## v0.5.0 (2026-02-06) - Invite Anti-Abuse & Audit
+**Backend Release**
+
+### Features
+*   **Invite Protection**:
+    *   Added `usage_limit` (default 30) to prevent code sharing abuse.
+    *   Added `expires_at` for temporary codes.
+    *   Join fails if code is expired or usage limit reached.
+*   **Rate Limiting**:
+    *   `/api/student/join` limited to 5 requests/minute per user/IP.
+    *   Returns 429 JSON on violation.
+*   **Audit Logs**:
+    *   New `audit_logs` table: `timestamp`, `actor_id`, `action`, `target`, `result`.
+    *   Teachers can query via `GET /api/teacher/audit?classId=...`.
+    *   Tracks: `CREATE_CLASS`, `ROTATE_INVITE`, `JOIN_CLASS`, `KICK_MEMBER`, `LEAVE_CLASS`.
+*   **Security**:
+    *   RBAC: Students/Parents cannot query audit logs (403).
+
+### Tech
+*   **Schema**: Extended `class_invites` with `usage_limit`, `usage_count`, `expires_at`, `revoked_at`. New `audit_logs` table.
+*   **Service**: Added `incrementInviteUsage`, `getAuditLogs`, `logAudit`.
+
 ## v0.4.2 (2026-02-06) - UX & Error Handling
 **Client-Side Release (iPad SwiftUI)**
 

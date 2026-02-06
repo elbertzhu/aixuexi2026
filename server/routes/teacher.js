@@ -73,7 +73,12 @@ router.post('/classes/:id/invite', async (req, res) => {
         const isOwner = await classService.isClassOwner(classId, req.user.id);
         if (!isOwner) return res.status(403).json({ error: "Not authorized for this class" });
 
-        const invite = await classService.generateInvite(classId, req.user.id);
+        // v0.5.0: Pass options (usageLimit, expiresAt)
+        const options = {};
+        if (req.body.usageLimit) options.usageLimit = req.body.usageLimit;
+        if (req.body.expiresAt) options.expiresAt = req.body.expiresAt;
+
+        const invite = await classService.generateInvite(classId, req.user.id, options);
         res.json(invite);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -97,15 +102,30 @@ router.get('/classes/:id/invite', async (req, res) => {
 
 // v0.4.0 DELETE /api/teacher/classes/:id/members/:studentId
 // Remove student from class
+// v0.5.0: Added Audit Log
 router.delete('/classes/:id/members/:studentId', async (req, res) => {
     try {
         const { id: classId, studentId } = req.params;
         const isOwner = await classService.isClassOwner(classId, req.user.id);
         if (!isOwner) return res.status(403).json({ error: "Not authorized for this class" });
 
-        await classService.removeMember(classId, studentId);
-        // Audit log could go here
+        await classService.removeMember(classId, studentId, req.user.id, 'teacher');
         res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// v0.5.0 GET /api/teacher/audit
+// Query audit logs
+router.get('/audit', async (req, res) => {
+    try {
+        const { classId, limit } = req.query;
+        const logs = await classService.getAuditLogs({ 
+            classId, 
+            limit: limit ? parseInt(limit) : 100 
+        });
+        res.json(logs);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

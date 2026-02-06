@@ -75,15 +75,33 @@ function init() {
         )`);
 
         // v0.4.0: Class Invites
+        // v0.5.0: Added usage_limit, usage_count, expires_at, revoked_at
         db.run(`CREATE TABLE IF NOT EXISTS class_invites (
             code TEXT PRIMARY KEY,
             class_id TEXT NOT NULL,
             created_by TEXT NOT NULL,
             status TEXT DEFAULT 'active',
+            usage_limit INTEGER DEFAULT 30,
+            usage_count INTEGER DEFAULT 0,
             expires_at INTEGER,
+            revoked_at INTEGER,
             created_at INTEGER
         )`, (err) => {
             if (err) console.error('Failed to create class_invites table:', err);
+        });
+
+        // v0.5.0: Audit Logs
+        db.run(`CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp INTEGER NOT NULL,
+            actor_id TEXT NOT NULL,
+            actor_role TEXT NOT NULL,
+            action TEXT NOT NULL,
+            target TEXT NOT NULL,
+            result TEXT NOT NULL,
+            reason TEXT
+        )`, (err) => {
+            if (err) console.error('Failed to create audit_logs table:', err);
         });
         
         console.log('Stats DB Initialized at', dbPath);

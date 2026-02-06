@@ -1,5 +1,24 @@
 # Decision Log
 
+## v0.5.0 (2026-02-06) - Invite Anti-Abuse & Audit
+
+**Decision:** Implement anti-abuse controls for invites and basic audit logging.
+
+**Key Choices:**
+- **Usage Limits:** Added `usage_limit` (default 30) and `usage_count` to `class_invites`. Codes auto-expire if count reached.
+- **Expiration:** Added `expires_at` to invites.
+- **Rate Limiting:** Implemented minimal in-memory rate limiter for `/api/student/join` (5 req/min per user/IP).
+- **Audit Logs:** New `audit_logs` table tracking Actor, Action, Target, Result.
+- **Query Interface:** Teachers can query logs via `GET /api/teacher/audit`.
+
+**Constraints:**
+- No breaking changes to existing API return structures (fields added).
+- No new authentication (continued mock).
+- UI not required for v0.5.0.
+
+**Commits:**
+- `feat(v0.5.0): invite abuse protection and audit logs` (Pending)
+
 ## v0.4.0 (2026-02-06) - Class Invites & Write APIs
 
 **Decision:** Implement class invite codes and basic class management write operations (Create, Join, Leave, Kick).

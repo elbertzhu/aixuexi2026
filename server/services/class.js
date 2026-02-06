@@ -11,6 +11,18 @@ function generateInviteCode() {
     return code;
 }
 
+// v0.5.0: Audit Logger
+function logAudit({ actorId, actorRole, action, target, result, reason = null }) {
+    return new Promise((resolve, reject) => {
+        const stmt = db.prepare('INSERT INTO audit_logs (timestamp, actor_id, actor_role, action, target, result, reason) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        stmt.run(Date.now(), actorId, actorRole, action, target, result, reason, (err) => {
+            if (err) reject(err);
+            else resolve();
+        });
+        stmt.finalize();
+    });
+}
+
 module.exports = {
     createClass: (teacherId, name) => {
         return new Promise((resolve, reject) => {
@@ -18,29 +30,38 @@ module.exports = {
             const stmt = db.prepare('INSERT INTO classes (id, teacher_id, name, created_at) VALUES (?, ?, ?, ?)');
             stmt.run(id, teacherId, name, Date.now(), (err) => {
                 if (err) reject(err);
-                else resolve({ id, teacherId, name });
+                else {
+                    logAudit({ actorId: teacherId, actorRole: 'teacher', action: 'CREATE_CLASS', target: id, result: 'success' });
+                    resolve({ id, teacherId, name });
+                }
             });
             stmt.finalize();
         });
     },
 
     // v0.4.0: Generate/Rotate Invite Code
-    generateInvite: (classId, teacherId) => {
+    // v0.5.0: Added usage_limit, expires_at, revoke logic
+    generateInvite: (classId, teacherId, options = {}) => {
         return new Promise((resolve, reject) => {
             const code = generateInviteCode();
             const now = Date.now();
-            
+            const usageLimit = options.usageLimit || 30;
+            const expiresAt = options.expiresAt || null; // Null means never expires
+
             db.serialize(() => {
                 // 1. Revoke existing active codes
-                const revokeStmt = db.prepare("UPDATE class_invites SET status = 'revoked' WHERE class_id = ? AND status = 'active'");
-                revokeStmt.run(classId);
+                const revokeStmt = db.prepare("UPDATE class_invites SET status = 'revoked', revoked_at = ? WHERE class_id = ? AND status = 'active'");
+                revokeStmt.run(now, classId);
                 revokeStmt.finalize();
 
                 // 2. Insert new code
-                const stmt = db.prepare('INSERT INTO class_invites (code, class_id, created_by, status, created_at) VALUES (?, ?, ?, ?, ?)');
-                stmt.run(code, classId, teacherId, 'active', now, function(err) {
+                const stmt = db.prepare('INSERT INTO class_invites (code, class_id, created_by, status, usage_limit, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
+                stmt.run(code, classId, teacherId, 'active', usageLimit, expiresAt, now, function(err) {
                     if (err) reject(err);
-                    else resolve({ code, class_id: classId, status: 'active' });
+                    else {
+                        logAudit({ actorId: teacherId, actorRole: 'teacher', action: 'ROTATE_INVITE', target: `${classId}/${code}`, result: 'success' });
+                        resolve({ code, class_id: classId, status: 'active', usage_limit: usageLimit, expires_at: expiresAt });
+                    }
                 });
                 stmt.finalize();
             });
@@ -58,12 +79,14 @@ module.exports = {
     },
 
     // v0.4.0: Verify Invite
+    // v0.5.0: Added usage_limit check
     verifyInvite: (code) => {
         return new Promise((resolve, reject) => {
             db.get("SELECT * FROM class_invites WHERE code = ? AND status = 'active'", [code], (err, row) => {
                 if (err) reject(err);
                 if (!row) return resolve(null); // Invalid or revoked
                 if (row.expires_at && row.expires_at < Date.now()) return resolve(null); // Expired
+                if (row.usage_count >= row.usage_limit) return resolve(null); // Usage limit reached
                 resolve(row);
             });
         });
@@ -74,7 +97,6 @@ module.exports = {
             const stmt = db.prepare('INSERT OR IGNORE INTO class_members (class_id, student_id, joined_at) VALUES (?, ?, ?)');
             stmt.run(classId, studentId, Date.now(), function(err) {
                 if (err) reject(err);
-                // this.changes could be 0 if already exists, but we resolve true anyway
                 else resolve(true);
             });
             stmt.finalize();
@@ -82,17 +104,68 @@ module.exports = {
     },
 
     // v0.4.0: Remove Member
-    removeMember: (classId, studentId) => {
+    // v0.5.0: Added Audit Log
+    removeMember: (classId, studentId, actorId, actorRole) => {
         return new Promise((resolve, reject) => {
             const stmt = db.prepare('DELETE FROM class_members WHERE class_id = ? AND student_id = ?');
             stmt.run(classId, studentId, function(err) {
+                if (err) reject(err);
+                else {
+                    if (this.changes > 0) {
+                        logAudit({ actorId, actorRole, action: 'KICK_MEMBER', target: `${classId}/${studentId}`, result: 'success' });
+                    }
+                    resolve(this.changes > 0);
+                }
+            });
+            stmt.finalize();
+        });
+    },
+
+    // v0.5.0: Increment Invite Usage
+    incrementInviteUsage: (code) => {
+        return new Promise((resolve, reject) => {
+            const stmt = db.prepare('UPDATE class_invites SET usage_count = usage_count + 1 WHERE code = ? AND status = "active"');
+            stmt.run(code, function(err) {
                 if (err) reject(err);
                 else resolve(this.changes > 0);
             });
             stmt.finalize();
         });
     },
-    
+
+    // v0.5.0: Audit Query
+    getAuditLogs: (filters = {}) => {
+        return new Promise((resolve, reject) => {
+            let query = 'SELECT * FROM audit_logs WHERE 1=1';
+            const params = [];
+            
+            if (filters.classId) {
+                query += ' AND target LIKE ?';
+                params.push(`${filters.classId}%`);
+            }
+            
+            if (filters.actorId) {
+                query += ' AND actor_id = ?';
+                params.push(filters.actorId);
+            }
+
+            query += ' ORDER BY timestamp DESC';
+            
+            if (filters.limit) {
+                query += ' LIMIT ?';
+                params.push(filters.limit);
+            }
+
+            db.all(query, params, (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+    },
+
+    // v0.5.0: Log Audit (Exported for routes)
+    logAudit: logAudit,
+
     // v0.4.0: Check if class owner
     isClassOwner: (classId, teacherId) => {
         return new Promise((resolve, reject) => {
