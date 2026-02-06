@@ -51,8 +51,9 @@ router.get('/dashboard/student/:id', async (req, res) => {
     }
 });
 
-// Helper to Create Class (For testing/seeding mainly, but useful to have)
-router.post('/class', async (req, res) => {
+// v0.4.0 POST /api/teacher/classes
+// Create a new class
+router.post('/classes', async (req, res) => {
     try {
         const { name } = req.body;
         if (!name) return res.status(400).json({error: "Class name required"});
@@ -63,9 +64,78 @@ router.post('/class', async (req, res) => {
     }
 });
 
-// Helper to Add Student (For testing/seeding)
+// v0.4.0 POST /api/teacher/classes/:id/invite
+// Generate or Rotate invite code
+router.post('/classes/:id/invite', async (req, res) => {
+    try {
+        const classId = req.params.id;
+        // Security: Check ownership
+        const isOwner = await classService.isClassOwner(classId, req.user.id);
+        if (!isOwner) return res.status(403).json({ error: "Not authorized for this class" });
+
+        const invite = await classService.generateInvite(classId, req.user.id);
+        res.json(invite);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// v0.4.0 GET /api/teacher/classes/:id/invite
+// Get active invite code
+router.get('/classes/:id/invite', async (req, res) => {
+    try {
+        const classId = req.params.id;
+        const isOwner = await classService.isClassOwner(classId, req.user.id);
+        if (!isOwner) return res.status(403).json({ error: "Not authorized for this class" });
+
+        const invite = await classService.getActiveInvite(classId);
+        res.json(invite || { status: 'none' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// v0.4.0 DELETE /api/teacher/classes/:id/members/:studentId
+// Remove student from class
+router.delete('/classes/:id/members/:studentId', async (req, res) => {
+    try {
+        const { id: classId, studentId } = req.params;
+        const isOwner = await classService.isClassOwner(classId, req.user.id);
+        if (!isOwner) return res.status(403).json({ error: "Not authorized for this class" });
+
+        await classService.removeMember(classId, studentId);
+        // Audit log could go here
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// Deprecated Helper (v0.3.0 legacy, kept for backward compat if any tests use it, but prefer POST /classes)
+router.post('/class', async (req, res) => {
+    // ... Redirect logic or keep as specific helper
+    // For now, just alias to the new one logic or return 410?
+    // Let's keep it working as it was for seeding scripts
+    try {
+        const { name } = req.body;
+        if (!name) return res.status(400).json({error: "Class name required"});
+        const newClass = await classService.createClass(req.user.id, name);
+        res.json(newClass);
+    } catch (err) {
+        res.status(500).json({error: err.message});
+    }
+});
+
+// Deprecated Helper (v0.3.0 legacy)
 router.post('/class/:id/members', async (req, res) => {
     try {
+        // Warning: This legacy helper didn't check ownership strictly in v0.3.0
+        // We should probably enforce it now or warn.
+        // For v0.4.0 strictness, let's enforce ownership even on this legacy endpoint.
+        const isOwner = await classService.isClassOwner(req.params.id, req.user.id);
+        if (!isOwner) return res.status(403).json({ error: "Not authorized" });
+        
         const { studentId } = req.body;
         if (!studentId) return res.status(400).json({error: "studentId required"});
         await classService.addMember(req.params.id, studentId);

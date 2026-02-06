@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "coding-agent-3nd": {
+      "version": "1.0.0",
+      "installedAt": 1770300622622
+    },
+    "xcodebuildmcp": {
+      "version": "1.0.0",
+      "installedAt": 1770300667223
+    },
+    "macos-spm-app-packaging": {
+      "version": "1.0.0",
+      "installedAt": 1770300681468
+    }
+  }
+}

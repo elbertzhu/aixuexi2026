@@ -1,6 +1,16 @@
 const db = require('../stats/db');
 const uuid = require('uuid');
 
+// Helper: Generate clean code (6 chars, no 0/O/1/I)
+function generateInviteCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 32 chars
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
 module.exports = {
     createClass: (teacherId, name) => {
         return new Promise((resolve, reject) => {
@@ -14,14 +24,82 @@ module.exports = {
         });
     },
 
+    // v0.4.0: Generate/Rotate Invite Code
+    generateInvite: (classId, teacherId) => {
+        return new Promise((resolve, reject) => {
+            const code = generateInviteCode();
+            const now = Date.now();
+            
+            db.serialize(() => {
+                // 1. Revoke existing active codes
+                const revokeStmt = db.prepare("UPDATE class_invites SET status = 'revoked' WHERE class_id = ? AND status = 'active'");
+                revokeStmt.run(classId);
+                revokeStmt.finalize();
+
+                // 2. Insert new code
+                const stmt = db.prepare('INSERT INTO class_invites (code, class_id, created_by, status, created_at) VALUES (?, ?, ?, ?, ?)');
+                stmt.run(code, classId, teacherId, 'active', now, function(err) {
+                    if (err) reject(err);
+                    else resolve({ code, class_id: classId, status: 'active' });
+                });
+                stmt.finalize();
+            });
+        });
+    },
+
+    // v0.4.0: Get Active Invite
+    getActiveInvite: (classId) => {
+        return new Promise((resolve, reject) => {
+            db.get("SELECT * FROM class_invites WHERE class_id = ? AND status = 'active'", [classId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+    },
+
+    // v0.4.0: Verify Invite
+    verifyInvite: (code) => {
+        return new Promise((resolve, reject) => {
+            db.get("SELECT * FROM class_invites WHERE code = ? AND status = 'active'", [code], (err, row) => {
+                if (err) reject(err);
+                if (!row) return resolve(null); // Invalid or revoked
+                if (row.expires_at && row.expires_at < Date.now()) return resolve(null); // Expired
+                resolve(row);
+            });
+        });
+    },
+
     addMember: (classId, studentId) => {
         return new Promise((resolve, reject) => {
             const stmt = db.prepare('INSERT OR IGNORE INTO class_members (class_id, student_id, joined_at) VALUES (?, ?, ?)');
-            stmt.run(classId, studentId, Date.now(), (err) => {
+            stmt.run(classId, studentId, Date.now(), function(err) {
                 if (err) reject(err);
+                // this.changes could be 0 if already exists, but we resolve true anyway
                 else resolve(true);
             });
             stmt.finalize();
+        });
+    },
+
+    // v0.4.0: Remove Member
+    removeMember: (classId, studentId) => {
+        return new Promise((resolve, reject) => {
+            const stmt = db.prepare('DELETE FROM class_members WHERE class_id = ? AND student_id = ?');
+            stmt.run(classId, studentId, function(err) {
+                if (err) reject(err);
+                else resolve(this.changes > 0);
+            });
+            stmt.finalize();
+        });
+    },
+    
+    // v0.4.0: Check if class owner
+    isClassOwner: (classId, teacherId) => {
+        return new Promise((resolve, reject) => {
+            db.get('SELECT 1 FROM classes WHERE id = ? AND teacher_id = ?', [classId, teacherId], (err, row) => {
+                if (err) reject(err);
+                else resolve(!!row);
+            });
         });
     },
 

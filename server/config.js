@@ -44,5 +44,7 @@ module.exports = {
   features: {
     generateQuestions: process.env.AI_FEATURE_GENERATE !== 'false',
     explainAnswer: process.env.AI_FEATURE_EXPLAIN !== 'false',
-  }
+  },
+  
+  port: process.env.PORT || 3000
 };

@@ -44,10 +44,20 @@ const pipeline = require('./stats/pipeline');
 const parentRoutes = require('./routes/parent');
 const teacherRoutes = require('./routes/teacher');
 
+let studentRoutes;
+try {
+    studentRoutes = require('./routes/student.js');
+} catch (e) {
+    console.error('CRITICAL: Failed to load student routes:', e);
+}
+
 // app and mw already init at top
 // Just add routes
 app.use('/api/parent', parentRoutes);
 app.use('/api/teacher', teacherRoutes);
+if (studentRoutes) {
+    app.use('/api/student', studentRoutes);
+}
 
 
 // In-memory session store (Mock DB)

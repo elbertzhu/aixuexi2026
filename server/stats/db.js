@@ -73,6 +73,18 @@ function init() {
             joined_at INTEGER,
             PRIMARY KEY (class_id, student_id)
         )`);
+
+        // v0.4.0: Class Invites
+        db.run(`CREATE TABLE IF NOT EXISTS class_invites (
+            code TEXT PRIMARY KEY,
+            class_id TEXT NOT NULL,
+            created_by TEXT NOT NULL,
+            status TEXT DEFAULT 'active',
+            expires_at INTEGER,
+            created_at INTEGER
+        )`, (err) => {
+            if (err) console.error('Failed to create class_invites table:', err);
+        });
         
         console.log('Stats DB Initialized at', dbPath);
     });

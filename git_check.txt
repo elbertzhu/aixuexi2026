@@ -1,0 +1,10 @@
+commit 5cd42834a5646b3c18f431909605d7b899b73ced
+Author: Clawdbot <clawdbot@example.com>
+Date:   Thu Feb 5 13:10:00 2026 +0800
+
+    chore(v0.3.1): unify iPad run entry to swiftpm
+dd74270336c7456c8c9244e8410c1c11360304a6	refs/tags/v0.2.0
+55c169e09b95b8c73993aede6d10a220338e81d6	refs/tags/v0.2.0^{}
+9e42c87d2f54cdf6ca5a4c258d7257354d744aec	refs/tags/v0.3.0
+4974d1cb45b52fee83ff401b6086eb8406c38d54	refs/tags/v0.3.1
+5cd42834a5646b3c18f431909605d7b899b73ced	refs/tags/v0.3.1^{}
