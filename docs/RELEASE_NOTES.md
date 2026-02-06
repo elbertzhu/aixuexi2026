@@ -52,6 +52,11 @@
 *   **SwiftUI**: Use of `NavigationView`, `List`, `LazyVGrid`, `async/await`.
 *   **Architecture**: MVVM pattern (`TeacherDashboardViewModel`, `APIService`).
 
+### Verification
+*   **Code Structure**: Verified `ContentView.swift` contains Student/Teacher tabs.
+*   **Dependencies**: Verified `APIService.swift` contains `createClass` and `joinClass`.
+*   **UI**: Verified `StudentDashboardView.swift` and `Components.swift` exist.
+
 ## v0.4.1 (2026-02-06) - Class Management UI
 **Client-Side Release (iPad SwiftUI)**
 
