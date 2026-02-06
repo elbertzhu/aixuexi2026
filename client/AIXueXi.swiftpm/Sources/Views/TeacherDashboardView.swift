@@ -6,7 +6,7 @@ struct TeacherDashboardView: View {
     
     var body: some View {
         NavigationView {
-            VStack {
+            VStack(spacing: 0) {
                 // Identity Switcher (Dev Tool)
                 Picker("Identity", selection: $api.currentUserId) {
                     Text("Teacher").tag("teacher_v3_test")
@@ -21,28 +21,89 @@ struct TeacherDashboardView: View {
                 
                 Group {
                     if vm.isLoading {
-                        ProgressView("Loading...")
+                        // Skeleton / Loading Experience
+                        LoadingSkeletonView()
                     } else if vm.isForbidden {
                         ForbiddenView()
                     } else if let err = vm.error {
                         ErrorView(message: err, retryAction: { vm.load() })
                     } else {
-                        List {
-                            ForEach(vm.classes) { cls in
-                                Section(header: Text(cls.className)) {
-                                    ForEach(cls.students) { student in
-                                        NavigationLink(destination: TeacherStudentDetailView(studentId: student.id)) {
-                                            StudentRow(student: student)
+                        // Dashboard Content
+                        VStack(spacing: 0) {
+                            // Controls: Search + Sort + Filter
+                            DashboardControls(vm: vm)
+                                .padding(.horizontal)
+                                .padding(.bottom, 8)
+                            
+                            List {
+                                ForEach(vm.filteredClasses) { cls in
+                                    Section(header: Text("\(cls.className) (\(cls.students.count))")) {
+                                        if cls.students.isEmpty {
+                                            Text("No matching students")
+                                                .foregroundColor(.secondary)
+                                                .italic()
+                                        } else {
+                                            ForEach(cls.students) { student in
+                                                NavigationLink(destination: TeacherStudentDetailView(studentId: student.id)) {
+                                                    StudentRow(student: student)
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
+                            .listStyle(InsetGroupedListStyle())
                         }
                     }
                 }
             }
             .navigationTitle("Teacher Dashboard")
             .onAppear { vm.load() }
+        }
+        .navigationViewStyle(StackNavigationViewStyle()) // Ensure iPad works like iPhone for this scope
+    }
+}
+
+// MARK: - Subcomponents
+
+struct DashboardControls: View {
+    @ObservedObject var vm: TeacherDashboardViewModel
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            // Search
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.gray)
+                TextField("Search Student ID", text: $vm.searchText)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+            }
+            
+            // Filters Row
+            HStack {
+                // Class Picker
+                if !vm.availableClasses.isEmpty {
+                    Picker("Class", selection: $vm.selectedClassId) {
+                        Text("All Classes").tag(String?.none) // Explicit nil tag
+                        ForEach(vm.availableClasses) { cls in
+                            Text(cls.className).tag(String?.some(cls.id)) // Wrap ID
+                        }
+                    }
+                    .pickerStyle(MenuPickerStyle())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                
+                Spacer()
+                
+                // Sort Picker
+                Picker("Sort", selection: $vm.sortOption) {
+                    ForEach(StudentSortOption.allCases) { opt in
+                        Text(opt.rawValue).tag(opt)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .frame(maxWidth: 200)
+            }
         }
     }
 }
@@ -52,28 +113,43 @@ struct StudentRow: View {
     
     var body: some View {
         HStack {
-            VStack(alignment: .leading) {
-                Text(student.id).font(.headline)
-                Text("Last Active: \(formatDate(student.last_active))")
-                    .font(.caption).foregroundColor(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(student.id)
+                    .font(.headline)
+                Text("Active: \(formatDate(student.last_active))")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
             Spacer()
             
             // Core Metrics
-            VStack(alignment: .trailing) {
-                Text(String(format: "%.0f%% Acc", student.accuracy * 100))
-                    .foregroundColor(colorForAccuracy(student.accuracy))
-                    .bold()
-                
-                if student.srs_pending > 0 {
-                    Text("\(student.srs_pending) Due")
+            HStack(spacing: 12) {
+                // Accuracy Badge
+                HStack(spacing: 2) {
+                    Image(systemName: student.accuracy < 0.6 ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
                         .font(.caption)
-                        .padding(4)
-                        .background(Color.orange.opacity(0.2))
-                        .cornerRadius(4)
+                    Text(String(format: "%.0f%%", student.accuracy * 100))
+                        .bold()
+                }
+                .foregroundColor(colorForAccuracy(student.accuracy))
+                
+                // SRS Badge (Only if non-zero)
+                if student.srs_pending > 0 {
+                    HStack(spacing: 2) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.caption)
+                        Text("\(student.srs_pending)")
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.orange.opacity(0.15))
+                    .foregroundColor(.orange)
+                    .cornerRadius(12)
                 }
             }
         }
+        .padding(.vertical, 4)
     }
     
     func colorForAccuracy(_ acc: Double) -> Color {
@@ -84,10 +160,36 @@ struct StudentRow: View {
     
     func formatDate(_ ts: Double?) -> String {
         guard let ts = ts else { return "Never" }
+        // Simple relative time or short date
         let date = Date(timeIntervalSince1970: ts / 1000)
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        return formatter.string(from: date)
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+struct LoadingSkeletonView: View {
+    var body: some View {
+        List {
+            ForEach(0..<3) { section in
+                Section(header: Text("Class Loading...").redacted(reason: .placeholder)) {
+                    ForEach(0..<3) { row in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text("Student Name Placeholder")
+                                    .font(.headline)
+                                Text("Last Active: Yesterday")
+                                    .font(.caption)
+                            }
+                            Spacer()
+                            Text("85% Acc")
+                        }
+                        .redacted(reason: .placeholder)
+                        .padding(.vertical, 4)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -105,6 +207,8 @@ struct ForbiddenView: View {
                 .foregroundColor(.secondary)
         }
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemGroupedBackground))
     }
 }
 
@@ -121,12 +225,17 @@ struct ErrorView: View {
                 .font(.headline)
             Text(message)
                 .foregroundColor(.secondary)
-            Button("Retry") {
-                retryAction()
+                .multilineTextAlignment(.center)
+            
+            Button(action: retryAction) {
+                Text("Retry")
+                    .fontWeight(.bold)
+                    .padding()
+                    .frame(width: 120)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
             }
-            .padding()
-            .background(Color.blue.opacity(0.1))
-            .cornerRadius(8)
         }
         .padding()
     }
