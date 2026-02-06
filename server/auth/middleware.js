@@ -14,20 +14,23 @@ function authenticate(req, res, next) {
     authService.getUser(userId).then(user => {
         if (!user) {
             // Auto-create for dev convenience
-            // Allow creating admin if header specifies it
             const effectiveRole = ['admin', 'teacher', 'student', 'parent'].includes(role) ? role : 'student';
-            return authService.createUser(userId, userId, effectiveRole).then(newUser => {
+            authService.createUser(userId, userId, effectiveRole).then(newUser => {
                 req.user = newUser;
                 next();
+            }).catch(err => {
+                console.error('Auth Create Error', err);
+                res.status(500).json({ error: 'Auth failed' });
             });
-        }
-        // Allow role override via header for testing RBAC
-        if (['admin', 'teacher', 'student', 'parent'].includes(role)) {
-             req.user = { ...user, role: role };
         } else {
-             req.user = user;
+            // Allow role override via header for testing RBAC
+            if (['admin', 'teacher', 'student', 'parent'].includes(role)) {
+                req.user = { ...user, role: role };
+            } else {
+                req.user = user;
+            }
+            next();
         }
-        next();
     }).catch(err => {
         console.error('Auth Error', err);
         res.status(500).json({ error: 'Auth failed' });

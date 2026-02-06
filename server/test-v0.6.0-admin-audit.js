@@ -7,7 +7,7 @@ const http = require('http');
 
 const BASE_URL = 'http://localhost:3000';
 
-function request(method, path, body = null, headers = {}) {
+function request(method, path, body = null, role = 'admin', userId = 'admin_test') {
     return new Promise((resolve, reject) => {
         const url = new URL(path, BASE_URL);
         const options = {
@@ -17,9 +17,8 @@ function request(method, path, body = null, headers = {}) {
             method: method,
             headers: {
                 'Content-Type': 'application/json',
-                'x-user-id': headers['x-user-id'] || 'admin_test',
-                'x-role': headers['x-role'] || 'admin',
-                ...headers
+                'x-user-id': userId,
+                'x-role': role
             }
         };
 
@@ -62,49 +61,50 @@ async function runTests() {
         }
     }
 
-    // 1. Setup: Create Classes & Joins
+    // 1. Setup: Create Classes & Joins (TEACHER identity)
     let CLASS_A = null;
     let CLASS_B = null;
     let CODE_A = null;
     let CODE_B = null;
-    
-    await test('Setup: Create Class A', async () => {
-        const res = await request('POST', '/api/teacher/classes', { name: 'Class A' });
-        if (res.status !== 200) throw new Error(`Status ${res.status}`);
+
+    await test('Setup: Create Class A (Teacher)', async () => {
+        const res = await request('POST', '/api/teacher/classes', { name: 'Class A' }, 'teacher', 'teacher_1');
+        if (res.status !== 200) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
         CLASS_A = res.data.id;
     });
-    
-    await test('Setup: Generate Invite A', async () => {
-        const res = await request('POST', `/api/teacher/classes/${CLASS_A}/invite`);
-        if (res.status !== 200) throw new Error(`Status ${res.status}`);
+
+    await test('Setup: Generate Invite A (Teacher)', async () => {
+        const res = await request('POST', `/api/teacher/classes/${CLASS_A}/invite`, null, 'teacher', 'teacher_1');
+        if (res.status !== 200) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
         CODE_A = res.data.code;
     });
-    
-    await test('Setup: Create Class B', async () => {
-        const res = await request('POST', '/api/teacher/classes', { name: 'Class B' });
-        if (res.status !== 200) throw new Error(`Status ${res.status}`);
+
+    await test('Setup: Create Class B (Teacher)', async () => {
+        const res = await request('POST', '/api/teacher/classes', { name: 'Class B' }, 'teacher', 'teacher_1');
+        if (res.status !== 200) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
         CLASS_B = res.data.id;
     });
-    
-    await test('Setup: Generate Invite B', async () => {
-        const res = await request('POST', `/api/teacher/classes/${CLASS_B}/invite`);
-        if (res.status !== 200) throw new Error(`Status ${res.status}`);
+
+    await test('Setup: Generate Invite B (Teacher)', async () => {
+        const res = await request('POST', `/api/teacher/classes/${CLASS_B}/invite`, null, 'teacher', 'teacher_1');
+        if (res.status !== 200) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
         CODE_B = res.data.code;
     });
-    
-    await test('Setup: Student Join A', async () => {
-        const res = await request('POST', '/api/student/join', { code: CODE_A }, { 'x-user-id': 'student_a1', 'x-role': 'student' });
-        if (res.status !== 200) throw new Error(`Status ${res.status}`);
-    });
-    
-    await test('Setup: Student Join B', async () => {
-        const res = await request('POST', '/api/student/join', { code: CODE_B }, { 'x-user-id': 'student_b1', 'x-role': 'student' });
-        if (res.status !== 200) throw new Error(`Status ${res.status}`);
+
+    // Join phase: STUDENT identity
+    await test('Setup: Student Join A (Student)', async () => {
+        const res = await request('POST', '/api/student/join', { code: CODE_A }, 'student', 'student_1');
+        if (res.status !== 200) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
     });
 
-    // 2. Admin: Global Audit (No ClassId filter)
+    await test('Setup: Student Join B (Student)', async () => {
+        const res = await request('POST', '/api/student/join', { code: CODE_B }, 'student', 'student_2');
+        if (res.status !== 200) throw new Error(`Status ${res.status}: ${JSON.stringify(res.data)}`);
+    });
+
+    // 2. Admin: Global Audit (ADMIN identity)
     await test('Admin: Global Audit (All Classes)', async () => {
-        const res = await request('GET', '/api/admin/audit?limit=100');
+        const res = await request('GET', '/api/admin/audit?limit=100', null, 'admin', 'admin_1');
         if (res.status !== 200) throw new Error(`Status ${res.status}`);
         if (!res.data.items || res.data.items.length < 4) throw new Error(`Expected 4+ items, got ${res.data.items?.length}`);
         console.log(`   Found ${res.data.items.length} items (cross-class)`);
@@ -112,7 +112,7 @@ async function runTests() {
 
     // 3. Admin: Filter by Class
     await test('Admin: Filter by Class A', async () => {
-        const res = await request('GET', `/api/admin/audit?classId=${CLASS_A}&limit=100`);
+        const res = await request('GET', `/api/admin/audit?classId=${CLASS_A}&limit=100`, null, 'admin', 'admin_1');
         if (res.status !== 200) throw new Error(`Status ${res.status}`);
         // Should only have CREATE_CLASS and ROTATE_INVITE for A
         const hasB = res.data.items.some(i => i.target.includes(CLASS_B));
@@ -122,33 +122,28 @@ async function runTests() {
 
     // 4. Admin: Filter by Action
     await test('Admin: Filter by Action JOIN_CLASS', async () => {
-        const res = await request('GET', '/api/admin/audit?action=JOIN_CLASS&limit=100');
+        const res = await request('GET', '/api/admin/audit?action=JOIN_CLASS&limit=100', null, 'admin', 'admin_1');
         if (res.status !== 200) throw new Error(`Status ${res.status}`);
         const hasNonJoin = res.data.items.some(i => i.action !== 'JOIN_CLASS');
         if (hasNonJoin) throw new Error('Found non-JOIN_CLASS items');
         console.log(`   Found ${res.data.items.length} JOIN_CLASS items`);
     });
 
-    // 5. Admin: Rate Limit (Quick check - 30 req/min)
-    // We'll just verify the header exists and functionality works
-    // Actual rate limit testing requires timing which is flaky
-    console.log('   Rate limit: Skipped (flaky in unit tests)');
-
-    // 6. Teacher: Cannot Access Admin Endpoint (403)
+    // 5. Teacher: Cannot Access Admin Endpoint (403)
     await test('Teacher: 403 on Admin Audit', async () => {
-        const res = await request('GET', '/api/admin/audit', null, { 'x-user-id': 'teacher_test', 'x-role': 'teacher' });
+        const res = await request('GET', '/api/admin/audit', null, 'teacher', 'teacher_1');
         if (res.status !== 403) throw new Error(`Expected 403, got ${res.status}`);
     });
 
-    // 7. Student: Cannot Access Admin Endpoint (403)
+    // 6. Student: Cannot Access Admin Endpoint (403)
     await test('Student: 403 on Admin Audit', async () => {
-        const res = await request('GET', '/api/admin/audit', null, { 'x-user-id': 'student_test', 'x-role': 'student' });
+        const res = await request('GET', '/api/admin/audit', null, 'student', 'student_1');
         if (res.status !== 403) throw new Error(`Expected 403, got ${res.status}`);
     });
 
-    // 8. Admin: Export CSV
+    // 7. Admin: Export CSV
     await test('Admin: Export CSV', async () => {
-        const res = await request('GET', '/api/admin/audit/export?mode=page');
+        const res = await request('GET', '/api/admin/audit/export?mode=page', null, 'admin', 'admin_1');
         if (res.status !== 200) throw new Error(`Status ${res.status}`);
         if (!res.isCsv) throw new Error('Not CSV');
         const lines = res.data.trim().split('\n');
@@ -156,18 +151,18 @@ async function runTests() {
         console.log(`   CSV: ${lines.length - 1} rows`);
     });
 
-    // 9. Admin: mode=all Requires from/to
+    // 8. Admin: mode=all Requires from/to
     await test('Admin: mode=all Requires from/to', async () => {
-        const res = await request('GET', '/api/admin/audit/export?mode=all');
+        const res = await request('GET', '/api/admin/audit/export?mode=all', null, 'admin', 'admin_1');
         if (res.status !== 400) throw new Error(`Expected 400, got ${res.status}`);
         console.log(`   Correctly returned 400 for missing from/to`);
     });
 
-    // 10. Admin: mode=all with time range
+    // 9. Admin: mode=all with time range
     const now = Date.now();
     const yesterday = now - 86400000;
     await test('Admin: mode=all with time range', async () => {
-        const res = await request('GET', `/api/admin/audit/export?mode=all&from=${yesterday}&to=${now}`);
+        const res = await request('GET', `/api/admin/audit/export?mode=all&from=${yesterday}&to=${now}`, null, 'admin', 'admin_1');
         if (res.status !== 200) throw new Error(`Status ${res.status}`);
         if (!res.isCsv) throw new Error('Not CSV');
         console.log(`   Streaming export OK`);
