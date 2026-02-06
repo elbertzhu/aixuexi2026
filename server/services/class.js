@@ -62,8 +62,8 @@ module.exports = {
                         logAudit({ actorId: teacherId, actorRole: 'teacher', action: 'ROTATE_INVITE', target: `${classId}/${code}`, result: 'success' });
                         resolve({ code, class_id: classId, status: 'active', usage_limit: usageLimit, expires_at: expiresAt });
                     }
+                    stmt.finalize();
                 });
-                stmt.finalize();
             });
         });
     },

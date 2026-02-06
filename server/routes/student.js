@@ -77,7 +77,7 @@ router.post('/leave', async (req, res) => {
         if (!classId) return res.status(400).json({ error: "classId required" });
 
         // Security limits: Can only remove self.
-        await classService.removeMember(classId, req.user.id);
+        await classService.removeMember(classId, req.user.id, req.user.id, 'student');
         
         // Audit
         await classService.logAudit({

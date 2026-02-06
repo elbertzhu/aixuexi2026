@@ -2,10 +2,10 @@
   "name": "aixuexi2026-server",
   "version": "0.4.0.2",
   "description": "iPad AI Learning Server",
-  "main": "src/index.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "test": "jest"
   },
   "dependencies": {
