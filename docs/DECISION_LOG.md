@@ -31,3 +31,23 @@
 - **Stack:** Express + SQLite (Existing).
 - **Auth:** Simple Header-based (`x-user-id`, `x-role`) for rapid prototyping.
 - **Metrics:** Accuracy, SRS Pending, 7-Day Activity.
+
+## 2026-02-06 v0.4.0 - Class Invites & Write APIs
+
+**Summary:**
+- Implemented `POST /api/teacher/classes` (Create), `POST /api/teacher/classes/:id/invite` (Rotate), `DELETE /api/teacher/classes/:id/members/:studentId` (Kick).
+- Implemented `POST /api/student/join` (Join via Code), `POST /api/student/leave`.
+- Added `class_invites` schema in `server/stats/db.js`.
+- Fixed `server/routes/student.js` module resolution issues.
+- Introduced `server/routes/student.js` (Student specific routes).
+
+**Constraints:**
+- No changes to v0.3.x Read-Only Dashboard APIs.
+- Enforced RBAC: Teachers create/kick, Students join/leave.
+- Invites are 6-char alphanumeric, auto-rotated (revoked old).
+
+**Commits:**
+- `feat(v0.4.0): class invites and write APIs` (931f0fa)
+- `feat(v0.4.0): add student routes and service methods` (Assumed within previous)
+- `fix(ai): default to minimax model` (b6ff8a5) [Related to AI defaulting]
+

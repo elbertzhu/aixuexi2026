@@ -98,14 +98,15 @@ describe('v0.4.0 Class Invites & RBAC', async () => {
             method: 'POST',
             headers: teacherHeaders
         });
+        assert.strictEqual(rotateRes.status, 200);
         const newCode = rotateRes.body.code;
+        assert.ok(newCode);
         assert.notStrictEqual(newCode, inviteCode);
-        
+
         // Try join with OLD code (should fail)
         const res = await fetch(`${BASE_URL}/api/student/join`, {
             method: 'POST',
-            headers: { ...studentHeaders, 'Content-Type': 'application/json' }, // student already in, but let's try with another or same
-            // Actually service.addMember is idempotent/ignore, but verifyInvite returns null
+            headers: { ...studentHeaders, 'Content-Type': 'application/json' },
             body: JSON.stringify({ code: inviteCode })
         });
         assert.strictEqual(res.status, 404);
@@ -122,7 +123,9 @@ describe('v0.4.0 Class Invites & RBAC', async () => {
         const summaryRes = await fetch(`${BASE_URL}/api/teacher/dashboard/summary`, {
             headers: teacherHeaders
         });
+        assert.strictEqual(summaryRes.status, 200);
         const cls = summaryRes.body.find(c => c.classId === classId);
+        assert.ok(cls);
         assert.strictEqual(cls.studentCount, 0);
     });
 
@@ -151,7 +154,9 @@ describe('v0.4.0 Class Invites & RBAC', async () => {
          const summaryRes = await fetch(`${BASE_URL}/api/teacher/dashboard/summary`, {
             headers: teacherHeaders
         });
+        assert.strictEqual(summaryRes.status, 200);
         const cls = summaryRes.body.find(c => c.classId === classId);
+        assert.ok(cls);
         assert.strictEqual(cls.studentCount, 0);
     });
 });

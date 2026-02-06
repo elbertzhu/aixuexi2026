@@ -43,21 +43,13 @@ app.get('/api/ai/status', (req, res) => {
 const pipeline = require('./stats/pipeline');
 const parentRoutes = require('./routes/parent');
 const teacherRoutes = require('./routes/teacher');
-
-let studentRoutes;
-try {
-    studentRoutes = require('./routes/student.js');
-} catch (e) {
-    console.error('CRITICAL: Failed to load student routes:', e);
-}
+const studentRoutes = require('./routes/student');
 
 // app and mw already init at top
 // Just add routes
 app.use('/api/parent', parentRoutes);
 app.use('/api/teacher', teacherRoutes);
-if (studentRoutes) {
-    app.use('/api/student', studentRoutes);
-}
+app.use('/api/student', studentRoutes);
 
 
 // In-memory session store (Mock DB)
@@ -142,7 +134,8 @@ app.post('/api/level-test/answer', async (req, res) => {
   const responseTimeMs = now - (session.lastQuestionTime || now);
   session.lastQuestionTime = now;
 
-  // D-Round: Pipeline Push
+  // D-Round: Pipeline Push (Commented out to fix Module Not Found issue)
+  /*
   pipeline.push({
       eventId: uuid.v4(),
       userId: session.userId,
@@ -157,6 +150,7 @@ app.post('/api/level-test/answer', async (req, res) => {
           responseTimeMs
       }
   });
+  */
 
   session.history.push({ 
     q: session.currentQuestion, 
