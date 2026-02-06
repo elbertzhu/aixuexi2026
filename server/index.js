@@ -16,16 +16,15 @@ const sessions = {};
 
 // Health Check
 app.get('/health', (req, res) => {
-  const { apiKey, ...safeAiConfig } = config.ai;
-  res.json({ status: 'ok', version: pkg.version, ai: safeAiConfig });
+  res.json({ status: 'ok', version: pkg.version, provider: config.provider });
 });
 
 // AI Status
 app.get('/api/ai/status', (req, res) => {
     const status = ai.getStatus();
     res.json({
-        provider: config.ai.provider,
-        enabled: config.ai.enabled,
+        provider: config.provider,
+        enabled: config.enabled,
         rate_limit: {
             requests_per_min: config.ai.rateLimitPerMin,
             timeout_ms: config.ai.timeoutMs
@@ -221,6 +220,5 @@ app.get('/api/user/:userId/events', async (req, res) => {
 });
 
 app.listen(config.port, () => {
-  console.log(`Server running on port ${config.port}`);
-  console.log(`AI Configuration:`, config.ai);
+  console.log(`Server running on port ${config.port} (Provider: ${config.provider})`);
 });
