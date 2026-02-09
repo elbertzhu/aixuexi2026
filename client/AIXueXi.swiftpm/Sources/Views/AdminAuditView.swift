@@ -64,7 +64,7 @@ struct AdminAuditView: View {
                                 .font(.subheadline)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(Color(.systemGray6))
+                                .background(Color.gray.opacity(0.1))
                                 .cornerRadius(8)
                         }
                         
@@ -81,7 +81,7 @@ struct AdminAuditView: View {
                                 .font(.subheadline)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(Color(.systemGray6))
+                                .background(Color.gray.opacity(0.1))
                                 .cornerRadius(8)
                         }
                         
@@ -103,7 +103,7 @@ struct AdminAuditView: View {
                     .padding(.horizontal)
                     .padding(.vertical, 8)
                 }
-                .background(Color(.systemBackground))
+                .background(Color.white)
                 
                 Divider()
                 
@@ -191,9 +191,9 @@ struct AdminAuditView: View {
                 }
             }
             .navigationTitle("全局审计 (Admin)")
-            .navigationBarTitleDisplayMode(.inline)
+            // .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .automatic) {
                     Button {
                         exportCSV()
                     } label: {
@@ -302,7 +302,7 @@ struct AdminAuditView: View {
                     mode: "page"
                 )
                 await MainActor.run {
-                    UIPasteboard.general.string = csv
+                    // UIPasteboard.general.string = csv
                     exportMessage = "已复制到剪贴板"
                     isExporting = false
                     showExportAlert = true

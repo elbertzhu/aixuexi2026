@@ -101,14 +101,14 @@ struct TeacherDashboardView: View {
                                     }
                                 }
                             }
-                            .listStyle(InsetGroupedListStyle())
+                            .listStyle(PlainListStyle())
                         }
                     }
                 }
             }
             .navigationTitle("教师仪表盘")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .automatic) {
                     HStack {
                         // v0.6.0: Admin Global Audit Entry
                         Menu {
@@ -156,7 +156,7 @@ struct TeacherDashboardView: View {
                 Text("确定要移除 \(vm.studentToKick?.id ?? "该学生") 吗？")
             }
         }
-        .navigationViewStyle(StackNavigationViewStyle())
+        // .navigationViewStyle(StackNavigationViewStyle())
     }
 }
 
@@ -311,7 +311,7 @@ struct ForbiddenView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemGroupedBackground))
+        .background(Color.gray.opacity(0.05))
     }
 }
 

@@ -80,7 +80,7 @@ struct StudentDashboardView: View {
                                 }
                             }
                         }
-                        .listStyle(InsetGroupedListStyle())
+                        .listStyle(PlainListStyle())
                     }
                 }
             }
@@ -107,7 +107,7 @@ struct StudentDashboardView: View {
 }
 
 struct JoinClassSheet: View {
-    @ObservedObject var api: APIService.shared
+    @ObservedObject var api: APIService
     @Environment(\.dismiss) var dismiss
     @State private var code: String = ""
     @State private var isJoining = false
@@ -121,8 +121,8 @@ struct JoinClassSheet: View {
                 Section("输入邀请码") {
                     HStack {
                         TextField("6位邀请码", text: $code)
-                            .textInputAutocapitalization(.characters)
-                            .autocorrectionDisabled()
+                            // .textInputAutocapitalization(.characters)
+                            // .autocorrectionDisabled()
                             .font(.system(size: 20, weight: .bold, design: .monospaced))
                             .onChange(of: code) { newValue in
                                 // Auto uppercase and trim spaces
@@ -140,7 +140,7 @@ struct JoinClassSheet: View {
                         }
                         
                         Button {
-                            UIPasteboard.general.string = code
+                            // UIPasteboard.general.string = code
                         } label: {
                             Image(systemName: "doc.on.clipboard")
                                 .foregroundColor(.blue)
@@ -164,7 +164,7 @@ struct JoinClassSheet: View {
                 }
             }
             .navigationTitle("加入班级")
-            .navigationBarTitleDisplayMode(.inline)
+            // .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { dismiss() }
@@ -173,9 +173,9 @@ struct JoinClassSheet: View {
             .interactiveDismissDisabled(isJoining)
             .onAppear {
                 // Auto-paste from clipboard if available
-                if let pasted = UIPasteboard.general.string, pasted.count == 6 {
-                    code = pasted.uppercased().trimmingCharacters(in: .whitespaces)
-                }
+                // if let pasted = UIPasteboard.general.string, pasted.count == 6 {
+                //    code = pasted.uppercased().trimmingCharacters(in: .whitespaces)
+                // }
             }
         }
     }

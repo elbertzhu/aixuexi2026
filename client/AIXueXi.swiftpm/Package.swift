@@ -17,8 +17,7 @@ let package = Package(
         .executableTarget(
             name: "AIXueXi",
             dependencies: [],
-            path: "Sources",
-            sources: ["ContentView.swift"]
+            path: "Sources"
         )
     ]
 )

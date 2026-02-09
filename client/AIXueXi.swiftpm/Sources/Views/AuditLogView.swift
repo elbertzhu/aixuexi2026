@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AuditLogView: View {
-    @ObservedObject var api: APIService.shared
+    @ObservedObject var api: APIService
     let classId: String
     @Environment(\.dismiss) var dismiss
     @State private var logs: [AuditLog] = []
@@ -49,7 +49,7 @@ struct AuditLogView: View {
                             .font(.subheadline)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(Color(.systemGray6))
+                            .background(Color.gray.opacity(0.1))
                             .cornerRadius(8)
                     }
                     
@@ -63,7 +63,7 @@ struct AuditLogView: View {
                             .font(.subheadline)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(Color(.systemGray6))
+                            .background(Color.gray.opacity(0.1))
                             .cornerRadius(8)
                     }
                     
@@ -83,7 +83,7 @@ struct AuditLogView: View {
                     .disabled(isExporting)
                 }
                 .padding()
-                .background(Color(.systemBackground))
+                .background(Color.white)
                 
                 Divider()
                 
@@ -169,7 +169,7 @@ struct AuditLogView: View {
                 }
             }
             .navigationTitle("审计记录")
-            .navigationBarTitleDisplayMode(.inline)
+            // .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("完成") { dismiss() }
@@ -262,7 +262,7 @@ struct AuditLogView: View {
                 )
                 await MainActor.run {
                     // Copy to clipboard for demo (real app would use ShareSheet)
-                    UIPasteboard.general.string = csv
+                    // UIPasteboard.general.string = csv
                     exportMessage = "已复制到剪贴板：\(exportFilename)"
                     isExporting = false
                     showExportAlert = true
